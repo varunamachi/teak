@@ -11,3 +11,6 @@ Intended changes are:
 * Postgres support for common operations
 
 Details will be added later.
+
+## Note
+This repo is expected to be broken for some time
