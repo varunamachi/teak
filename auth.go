@@ -99,15 +99,15 @@ type UserStorage interface {
 	//GetAllUsers - gets all users based on offset and limit
 	GetUsers(offset int,
 		limit int,
-		filter *vcmn.Filter) (users []*User, err error)
+		filter *Filter) (users []*User, err error)
 
 	//GetCount - gives the number of user selected by given filter
-	GetCount(filter *vcmn.Filter) (count int, err error)
+	GetCount(filter *Filter) (count int, err error)
 
 	//GetUsersWithCount - gives a list of users paged with total count
 	GetUsersWithCount(offset int,
 		limit int,
-		filter *vcmn.Filter) (total int, users []*User, err error)
+		filter *Filter) (total int, users []*User, err error)
 
 	//ResetPassword - sets password of a unauthenticated user
 	ResetPassword(userID, oldPwd, newPwd string) (err error)
