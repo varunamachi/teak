@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"time"
 )
 
 //Level - gives log level
@@ -364,4 +365,90 @@ func (cw *ConsoleWriter) Enable(value bool) {
 //IsEnabled - tells if the writer is enabled
 func (cw *ConsoleWriter) IsEnabled() (value bool) {
 	return cw.enabled
+}
+
+//Event - represents a event initiated by a user while performing an operation
+type Event struct {
+	Op       string      `json:"op" bson:"op"`
+	UserID   string      `json:"userID" bson:"userID"`
+	UserName string      `json:"userName" bson:"userName"`
+	Success  bool        `json:"success" bson:"success"`
+	Error    string      `json:"error" bson:"error"`
+	Time     time.Time   `json:"time" bson:"time"`
+	Data     interface{} `json:"data" bson:"data"`
+}
+
+//EventAuditor - handles application events for audit purposes
+type EventAuditor interface {
+	//LogEvent - logs given event into storage
+	LogEvent(event *Event)
+
+	//GetEvents - retrieves event entries based on filters
+	GetEvents(offset, limit int,
+		filter *Filter) (
+		total int,
+		events []*Event,
+		err error)
+
+	//CreateIndices - creates mongoDB indeces for tables used for event logs
+	CreateIndices() (err error)
+
+	//CleanData - cleans event related data from database
+	CleanData() (err error)
+}
+
+//NoOpAuditor - doesnt do anything, it's a dummy auditor
+type NoOpAuditor struct{}
+
+//LogEvent - logs event to console
+func (n *NoOpAuditor) LogEvent(event *Event) {
+	if event.Success {
+		fmt.Printf("Event:Info - %s BY %s", event.Op, event.UserID)
+	} else {
+		fmt.Printf("Event:Error - %s BY %s", event.Op, event.UserID)
+	}
+}
+
+//GetEvents - gives an empty list of events
+func (n *NoOpAuditor) GetEvents(
+	offset, limit int, filter *Filter) (
+	total int, events []*Event, err error) {
+	return total, events, err
+}
+
+//CreateIndices - creates nothing
+func (n *NoOpAuditor) CreateIndices() (err error) { return err }
+
+//CleanData - there's nothing to clean
+func (n *NoOpAuditor) CleanData() (err error) { return err }
+
+var eventAuditor EventAuditor
+
+//SetEventAuditor - sets the event auditor
+func SetEventAuditor(auditor EventAuditor) {
+	eventAuditor = auditor
+}
+
+//GetAuditor - gets the event auditor
+func GetAuditor() EventAuditor {
+	return eventAuditor
+}
+
+//LogEvent - logs an event using the registered audit function
+func LogEvent(
+	op string,
+	userID string,
+	userName string,
+	success bool,
+	err string,
+	data interface{}) {
+	eventAuditor.LogEvent(&Event{
+		Op:       op,
+		UserID:   userID,
+		UserName: userName,
+		Success:  success,
+		Error:    err,
+		Time:     time.Now(),
+		Data:     data,
+	})
 }

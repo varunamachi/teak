@@ -1,6 +1,9 @@
 package teak
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 //M - map of string to any
 type M map[string]interface{}
@@ -141,4 +144,34 @@ type UserStorage interface {
 	//UpdateProfile - updates user details - this should be used when user
 	//logged in is updating own user account
 	UpdateProfile(user *User) (err error)
+}
+
+//Authenticator - a function that is used to authenticate an user. The function
+//takes map of parameters contents of which will differ based on actual function
+//used
+type Authenticator func(params map[string]interface{}) (*User, error)
+
+//Authorizer - a function that will be used authorize an user
+type Authorizer func(userID string) (AuthLevel, error)
+
+//NoOpAuthenticator - authenticator that does not do anything
+func NoOpAuthenticator(params map[string]interface{}) (*User, error) {
+	return nil, nil
+}
+
+//NoOpAuthorizer - authorizer that does not do anything
+func NoOpAuthorizer(userID string) (AuthLevel, error) {
+	return Public, nil
+}
+
+func dummyAuthenticator(params map[string]interface{}) (
+	user *User, err error) {
+	user = nil
+	err = errors.New("No valid authenticator found")
+	return user, err
+}
+
+func dummyAuthorizer(userID string) (role AuthLevel, err error) {
+	err = errors.New("No valid authorizer found")
+	return role, err
 }
