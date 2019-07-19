@@ -40,14 +40,6 @@ type Options struct {
 	Authorizer    Authorizer
 }
 
-//EmailConfig - configuration for sending email
-type EmailConfig struct {
-	AppEMail         string `json:"appEMail"`
-	AppEMailPassword string `json:"appEMailPassword"`
-	SMTPHost         string `json:"smtpHost"`
-	SMTPPort         int    `json:"smtpPort"`
-}
-
 //GetJWTKey - gives a unique JWT key
 func GetJWTKey() []byte {
 	if len(jwtKey) == 0 {

@@ -2,6 +2,7 @@ package teak
 
 import (
 	"errors"
+	"net/url"
 	"time"
 )
 
@@ -174,4 +175,55 @@ func dummyAuthenticator(params map[string]interface{}) (
 func dummyAuthorizer(userID string) (role AuthLevel, err error) {
 	err = errors.New("No valid authorizer found")
 	return role, err
+}
+
+func getUserIDPassword(params map[string]interface{}) (
+	userID string, password string, err error) {
+	var aok, bok bool
+	userID, aok = params["userID"].(string)
+	//UserID is the SHA1 hash of the userID provided
+	if aok {
+		userID = Hash(userID)
+	}
+	password, bok = params["password"].(string)
+	if !aok || !bok {
+		err = errors.New("Authorization, Invalid credentials provided")
+	}
+	return userID, password, err
+}
+
+//SendVerificationMail - send mail with a link to user verification based on
+//user email
+func SendVerificationMail(user *User) (err error) {
+	content := "Hi!,\n Verify your account by clicking on " +
+		"below link\n" + getVerificationLink(user)
+	subject := "Verification for Sparrow"
+	var emailKey string
+	err = GetConfig("emailKey", &emailKey)
+	if err == nil {
+		var email string
+		email, err = DecryptStr(emailKey, user.Email)
+		if err == nil {
+			err = SendEmail(email, subject, content)
+		}
+	}
+	// fmt.Println(content)
+	return LogError("UMan:Auth", err)
+}
+
+func getVerificationLink(user *User) (link string) {
+	name := user.FirstName + " " + user.LastName
+	if name == "" {
+		name = user.ID
+	}
+	//@MAYBE use a template
+	var host string
+	e := GetConfig("hostAddress", &host)
+	if e != nil {
+		host = "http://localhost:4200"
+	}
+	link = host + "/" + "verify?" +
+		"verifyID=" + user.VerID +
+		"&userID=" + url.PathEscape(user.ID)
+	return link
 }
