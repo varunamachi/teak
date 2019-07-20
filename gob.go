@@ -13,3 +13,6 @@ var e = echo.New()
 var accessPos = 0
 var rootPath = ""
 var jwtKey []byte
+
+//User management
+var userStorage UserStorage

@@ -2,8 +2,11 @@ package teak
 
 import (
 	"errors"
-	"net/url"
+	"net/http"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
+	echo "github.com/labstack/echo/v4"
 )
 
 //M - map of string to any
@@ -46,26 +49,26 @@ var Flagged UserState = "flagged"
 
 //User - represents an user
 type User struct {
-	ID          string    `json:"id" bson:"id"`
-	Email       string    `json:"email" bson:"email"`
-	Auth        AuthLevel `json:"auth" bson:"auth"`
-	FirstName   string    `json:"firstName" bson:"firstName"`
-	LastName    string    `json:"lastName" bson:"lastName"`
-	Title       string    `json:"title" bson:"title"`
-	FullName    string    `json:"fullName" bson:"fullName"`
-	State       UserState `json:"state" bson:"state"`
-	VerID       string    `json:"verID" bson:"verID"`
-	PwdExpiry   time.Time `json:"pwdExpiry" bson:"pwdExpiry"`
-	Created     time.Time `json:"created" bson:"created"`
-	Modified    time.Time `json:"modified" bson:"modified"`
-	VerfiedDate time.Time `json:"verified" bson:"verified"`
-	Props       M         `json:"props" bson:"props"`
+	ID          string    `json:"id"`
+	Email       string    `json:"email"`
+	Auth        AuthLevel `json:"auth"`
+	FirstName   string    `json:"firstName"`
+	LastName    string    `json:"lastName"`
+	Title       string    `json:"title"`
+	FullName    string    `json:"fullName"`
+	State       UserState `json:"state"`
+	VerID       string    `json:"verID"`
+	PwdExpiry   time.Time `json:"pwdExpiry"`
+	Created     time.Time `json:"created"`
+	Modified    time.Time `json:"modified"`
+	VerfiedDate time.Time `json:"verified"`
+	Props       M         `json:"props"`
 }
 
 //Group - group of users
 type Group struct {
-	Name  string   `json:"name" bson:"name"`
-	Users []string `json:"users" bson:"users"`
+	Name  string   `json:"name"`
+	Users []string `json:"users"`
 }
 
 func (a AuthLevel) String() string {
@@ -192,38 +195,82 @@ func getUserIDPassword(params map[string]interface{}) (
 	return userID, password, err
 }
 
-//SendVerificationMail - send mail with a link to user verification based on
-//user email
-func SendVerificationMail(user *User) (err error) {
-	content := "Hi!,\n Verify your account by clicking on " +
-		"below link\n" + getVerificationLink(user)
-	subject := "Verification for Sparrow"
-	var emailKey string
-	err = GetConfig("emailKey", &emailKey)
-	if err == nil {
-		var email string
-		email, err = DecryptStr(emailKey, user.Email)
-		if err == nil {
-			err = SendEmail(email, subject, content)
-		}
+//GetEndpoints - Export app security related APIs
+func getAuthEndpoints() []*Endpoint {
+	return []*Endpoint{
+		&Endpoint{
+			Method:   echo.POST,
+			URL:      "login",
+			Category: "security",
+			Func:     login,
+			Access:   Public,
+			Comment:  "Login to application",
+		},
 	}
-	// fmt.Println(content)
-	return LogError("UMan:Auth", err)
 }
 
-func getVerificationLink(user *User) (link string) {
-	name := user.FirstName + " " + user.LastName
-	if name == "" {
-		name = user.ID
+func login(ctx echo.Context) (err error) {
+	defer func() {
+		LogError("Net:Sec:API", err)
+	}()
+	msg := "Login successful"
+	status := http.StatusOK
+	var data map[string]interface{}
+	userID := ""
+	name := "" //user name is used for auditing
+	creds := make(map[string]string)
+	err = ctx.Bind(&creds)
+	if err == nil {
+		var user *User
+		userID = creds["userID"]
+		name = userID
+		user, err = DoLogin(userID, creds["password"])
+		if err == nil {
+			if user.State == Active {
+				token := jwt.New(jwt.SigningMethodHS256)
+				claims := token.Claims.(jwt.MapClaims)
+				name = user.FirstName + " " + user.LastName
+				claims["userID"] = user.ID
+				claims["exp"] = time.Now().Add(time.Hour * 24 * 7).Unix()
+				claims["access"] = user.Auth
+				claims["userName"] = name
+				claims["userType"] = "normal"
+				var signed string
+				key := GetJWTKey()
+				signed, err = token.SignedString(key)
+				if err == nil {
+					data = make(map[string]interface{})
+					data["token"] = signed
+					data["user"] = user
+				} else {
+					msg = "Failed to sign token"
+					status = http.StatusInternalServerError
+				}
+			} else {
+				data = make(map[string]interface{})
+				data["state"] = user.State
+				msg = "User is not active"
+				status = http.StatusUnauthorized
+				err = errors.New(msg)
+			}
+		} else {
+			msg = "Login failed"
+			status = http.StatusUnauthorized
+		}
+	} else {
+		msg = "Failed to read credentials from request"
+		status = http.StatusBadRequest
 	}
-	//@MAYBE use a template
-	var host string
-	e := GetConfig("hostAddress", &host)
-	if e != nil {
-		host = "http://localhost:4200"
-	}
-	link = host + "/" + "verify?" +
-		"verifyID=" + user.VerID +
-		"&userID=" + url.PathEscape(user.ID)
-	return link
+	//SHA1 encoded to avoid storing email in db
+	ctx.Set("userID", Hash(userID))
+	ctx.Set("userName", name)
+	AuditedSend(ctx, &Result{
+		Status: status,
+		Op:     "login",
+		Msg:    msg,
+		OK:     err == nil,
+		Data:   data,
+		Err:    ErrString(err),
+	})
+	return LogError("Net:Sec:API", err)
 }

@@ -1,2 +1,487 @@
 package teak
 
+import (
+	"errors"
+	"net/http"
+	"net/url"
+	"time"
+
+	echo "github.com/labstack/echo/v4"
+	uuid "github.com/satori/go.uuid"
+)
+
+func getUserManagementEndpoints() []*Endpoint {
+	return []*Endpoint{
+		&Endpoint{
+			Method:   echo.POST,
+			URL:      "uman/user",
+			Access:   Admin,
+			Category: "user management",
+			Func:     createUser,
+			Comment:  "Create an user",
+		},
+		&Endpoint{
+			Method:   echo.PUT,
+			URL:      "uman/user",
+			Access:   Admin,
+			Category: "user management",
+			Func:     updateUser,
+			Comment:  "Update an user",
+		},
+		&Endpoint{
+			Method:   echo.DELETE,
+			URL:      "uman/user/:userID",
+			Access:   Admin,
+			Category: "user management",
+			Func:     deleteUser,
+			Comment:  "Delete an user",
+		},
+		&Endpoint{
+			Method:   echo.GET,
+			URL:      "uman/user/:userID",
+			Access:   Monitor,
+			Category: "user management",
+			Func:     getUser,
+			Comment:  "Get info about an user",
+		},
+		&Endpoint{
+			Method:   echo.GET,
+			URL:      "uman/user",
+			Access:   Monitor,
+			Category: "user management",
+			Func:     getUsers,
+			Comment:  "Get list of user & their details",
+		},
+		&Endpoint{
+			Method:   echo.POST,
+			URL:      "uman/user/password",
+			Access:   Admin,
+			Category: "user management",
+			Func:     setPassword,
+			Comment:  "Set password for an user",
+		},
+		&Endpoint{
+			Method:   echo.PUT,
+			URL:      "uman/user/password",
+			Access:   Monitor,
+			Category: "user management",
+			Func:     resetPassword,
+			Comment:  "Reset password",
+		},
+		&Endpoint{
+			Method:   echo.POST,
+			URL:      "uman/user/self",
+			Access:   Public,
+			Category: "user management",
+			Func:     registerUser,
+			Comment:  "Registration for new user",
+		},
+		&Endpoint{
+			Method:   echo.POST,
+			URL:      "uman/user/verify/:userID/:verID",
+			Access:   Public,
+			Category: "user management",
+			Func:     verify,
+			Comment:  "Verify a registered account",
+		},
+		&Endpoint{
+			Method:   echo.PUT,
+			URL:      "/uman/user/self",
+			Access:   Public,
+			Category: "user management",
+			Func:     updateProfile,
+		},
+	}
+}
+
+//SendVerificationMail - send mail with a link to user verification based on
+//user email
+func SendVerificationMail(user *User) (err error) {
+	content := "Hi!,\n Verify your account by clicking on " +
+		"below link\n" + getVerificationLink(user)
+	subject := "Verification for Sparrow"
+	var emailKey string
+	err = GetConfig("emailKey", &emailKey)
+	if err == nil {
+		var email string
+		email, err = DecryptStr(emailKey, user.Email)
+		if err == nil {
+			err = SendEmail(email, subject, content)
+		}
+	}
+	// fmt.Println(content)
+	return LogError("UMan:Auth", err)
+}
+
+func getVerificationLink(user *User) (link string) {
+	name := user.FirstName + " " + user.LastName
+	if name == "" {
+		name = user.ID
+	}
+	//@MAYBE use a template
+	var host string
+	e := GetConfig("hostAddress", &host)
+	if e != nil {
+		host = "http://localhost:4200"
+	}
+	link = host + "/" + "verify?" +
+		"verifyID=" + user.VerID +
+		"&userID=" + url.PathEscape(user.ID)
+	return link
+}
+
+//SetUserStorage - sets the user storage strategu
+func SetUserStorage(storage UserStorage) {
+	userStorage = storage
+}
+
+func updateUserInfo(user *User) (err error) {
+	if len(user.ID) == 0 {
+		// @TODO - store hash of user ID
+		user.ID = Hash(user.Email)
+	} else {
+		user.ID = Hash(user.ID)
+	}
+	user.VerID = uuid.NewV4().String()
+	user.Created = time.Now()
+	user.State = Disabled
+	user.FullName = user.FirstName + " " + user.LastName
+	// @TODO create a key retrieving strategy -- local | remote etc
+	var emailKey string
+	err = GetConfig("emailKey", &emailKey)
+	if err == nil {
+		user.Email, err = EncryptStr(emailKey, user.Email)
+	}
+	return err
+}
+
+func createUser(ctx echo.Context) (err error) {
+	status, msg := DefMS("Create User")
+	var user User
+	err = ctx.Bind(&user)
+	if err == nil {
+		user.Props = M{
+			"admin-created": true,
+		}
+		updateUserInfo(&user)
+		err = userStorage.CreateUser(&user)
+		if err != nil {
+			msg = "Failed to create user in database"
+			status = http.StatusInternalServerError
+		} else {
+			err = SendVerificationMail(&user)
+			// fmt.Println(getVerificationLink(&user))
+			if err != nil {
+				msg = "Failed to send verification email"
+				status = http.StatusInternalServerError
+			}
+		}
+	} else {
+		status = http.StatusBadRequest
+		msg = "User information given is malformed"
+	}
+	err = AuditedSendX(ctx, user, &Result{
+		Status: status,
+		Op:     "user_create",
+		Msg:    msg,
+		OK:     err == nil,
+		Data:   nil,
+		Err:    ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
+
+func registerUser(ctx echo.Context) (err error) {
+	status, msg := DefMS("Register User")
+	// var user User
+	upw := struct {
+		User     User   `json:"user"`
+		Password string `json:"password"`
+	}{}
+	err = ctx.Bind(&upw)
+	if err == nil {
+		upw.User.Auth = Normal
+		updateUserInfo(&upw.User)
+		err = userStorage.CreateUser(&upw.User)
+		if err != nil {
+			msg = "Failed to register user in database"
+			status = http.StatusInternalServerError
+		} else {
+
+			err = userStorage.SetPassword(upw.User.ID, upw.Password)
+			if err != nil {
+				msg = "Failed to set password"
+				status = http.StatusInternalServerError
+			} else {
+				err = SendVerificationMail(&upw.User)
+				if err != nil {
+					msg = "Failed to send verification email"
+					status = http.StatusInternalServerError
+				}
+			}
+		}
+	} else {
+		status = http.StatusBadRequest
+		msg = "User information given is malformed"
+	}
+	err = AuditedSendX(ctx, upw.User, &Result{
+		Status: status,
+		Op:     "user_register",
+		Msg:    msg,
+		OK:     err == nil,
+		Data: M{
+			"user": upw.User,
+		},
+		Err: ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
+
+func updateUser(ctx echo.Context) (err error) {
+	status, msg := DefMS("Update User")
+	var user User
+	err = ctx.Bind(&user)
+	if err == nil {
+		err = userStorage.UpdateUser(&user)
+		if err != nil {
+			msg = "Failed to update user in database"
+			status = http.StatusInternalServerError
+		}
+	} else {
+		status = http.StatusBadRequest
+		msg = "User information given is malformed"
+	}
+	err = AuditedSendX(ctx, user, &Result{
+		Status: status,
+		Op:     "user_update",
+		Msg:    msg,
+		OK:     err == nil,
+		Data:   nil,
+		Err:    ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
+
+func deleteUser(ctx echo.Context) (err error) {
+	status, msg := DefMS("Delete User")
+	userID := ctx.Param("userID")
+	var user *User
+	user, err = userStorage.GetUser(userID)
+	if err == nil {
+		curID := GetString(ctx, "userID")
+		if userID == curID {
+			msg = "Can not delete own user account"
+			status = http.StatusBadRequest
+		} else if user.Auth == Super {
+			msg = "Super account can not be deleted from web interface"
+			status = http.StatusBadRequest
+			err = errors.New(msg)
+		} else {
+			err = userStorage.DeleteUser(userID)
+			if err != nil {
+				msg = "Failed to delete user from database"
+				status = http.StatusInternalServerError
+			}
+		}
+	} else {
+		msg = "Invalid user ID is given for deletion"
+		status = http.StatusBadRequest
+		err = errors.New(msg)
+	}
+	err = AuditedSend(ctx, &Result{
+		Status: status,
+		Op:     "user_remove",
+		Msg:    msg,
+		OK:     err == nil,
+		Data: M{
+			"id":   userID,
+			"user": user,
+		},
+		Err: ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
+
+func getUser(ctx echo.Context) (err error) {
+	status, msg := DefMS("Get User")
+	userID := ctx.Param("userID")
+	var user *User
+	if len(userID) == 0 {
+		user, err = userStorage.GetUser(userID)
+		if err != nil {
+			msg = "Failed to retrieve user info from database"
+			status = http.StatusInternalServerError
+		}
+	} else {
+		msg = "Invalid user ID is given for retrieval"
+		status = http.StatusBadRequest
+	}
+	err = SendAndAuditOnErr(ctx, &Result{
+		Status: status,
+		Op:     "user_get",
+		Msg:    msg,
+		OK:     err == nil,
+		Data:   user,
+		Err:    ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
+
+func getUsers(ctx echo.Context) (err error) {
+	status, msg := DefMS("Get Users")
+	offset, limit, has := GetOffsetLimit(ctx)
+	// us := GetFirstValidStr(ctx.Param("status"), string(Active))
+	var users []*User
+	var total int
+	var filter Filter
+	err = LoadJSONFromArgs(ctx, "filter", &filter)
+	if has && err == nil {
+		total, users, err = userStorage.GetUsersWithCount(offset, limit, &filter)
+		if err != nil {
+			msg = "Failed to retrieve user info from database"
+			status = http.StatusInternalServerError
+		}
+	} else if err != nil {
+		msg = "Failed to decode filter"
+		status = http.StatusBadRequest
+	} else {
+		msg = "Could not retrieve user list, offset/limit not found"
+		status = http.StatusBadRequest
+		err = errors.New(msg)
+	}
+	err = SendAndAuditOnErr(ctx, &Result{
+		Status: status,
+		Op:     "user_multi_fetch",
+		Msg:    msg,
+		OK:     err == nil,
+		Data: CountList{
+			TotalCount: total,
+			Data:       users,
+		},
+		Err: ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
+
+func setPassword(ctx echo.Context) (err error) {
+	status, msg := DefMS("Set Password")
+	pinfo := make(map[string]string)
+	err = ctx.Bind(&pinfo)
+	userID, ok1 := pinfo["userID"]
+	password, ok2 := pinfo["password"]
+	if err == nil && ok1 && ok2 {
+		err = userStorage.SetPassword(userID, password)
+		if err != nil {
+			msg = "Failed to set password in database"
+			status = http.StatusInternalServerError
+		}
+	} else {
+		status = http.StatusBadRequest
+		msg = "Password information given is invalid, cannot set"
+	}
+	err = AuditedSendX(ctx, Hash(userID), &Result{
+		Status: status,
+		Op:     "user_password_set",
+		Msg:    msg,
+		OK:     err == nil,
+		Data:   nil,
+		Err:    ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
+
+func resetPassword(ctx echo.Context) (err error) {
+	status, msg := DefMS("Set Password")
+	pinfo := make(map[string]string)
+	err = ctx.Bind(&pinfo)
+	userID := GetString(ctx, "userID")
+	oldPassword, ok2 := pinfo["oldPassword"]
+	newPassword, ok3 := pinfo["newPassword"]
+	if err == nil && ok2 && ok3 && len(userID) != 0 {
+		err = userStorage.ResetPassword(userID, oldPassword, newPassword)
+		if err != nil {
+			msg = "Failed to reset password in database"
+			status = http.StatusInternalServerError
+		}
+	} else {
+		status = http.StatusBadRequest
+		msg = "Password information given is invalid, cannot reset"
+	}
+	err = AuditedSendX(ctx, Hash(userID), &Result{
+		Status: status,
+		Op:     "user_password_reset",
+		Msg:    msg,
+		OK:     err == nil,
+		Data:   nil,
+		Err:    ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
+
+func verify(ctx echo.Context) (err error) {
+	status, msg := DefMS("Create Password")
+	params := make(map[string]string)
+	userID := ctx.Param("userID")
+	verID := ctx.Param("verID")
+	err = ctx.Bind(&params)
+	if len(userID) > 0 && len(verID) > 0 && err == nil {
+		err = userStorage.VerifyUser(userID, verID)
+		if err == nil {
+			err = userStorage.SetPassword(userID, params["password"])
+			if err != nil {
+				msg = "Failed to set password"
+				status = http.StatusInternalServerError
+			}
+		} else {
+			msg = "Failed to verify user"
+			status = http.StatusInternalServerError
+		}
+	} else {
+		status = http.StatusBadRequest
+		msg = "Invalid information provided for creating password"
+	}
+	ctx.Set("userName", "N/A")
+	hash := Hash(userID)
+	err = AuditedSendX(ctx, hash, &Result{
+		Status: status,
+		Op:     "user_account_verify",
+		Msg:    msg,
+		OK:     err == nil,
+		Data: M{
+			"userID":         hash,
+			"verificationID": verID,
+		},
+		Err: ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
+
+func updateProfile(ctx echo.Context) (err error) {
+	status, msg := DefMS("Update profile")
+	var user User
+	sessionUserID := GetString(ctx, "userID")
+	err = ctx.Bind(&user)
+	if err == nil && sessionUserID == user.ID {
+		err = userStorage.UpdateProfile(&user)
+		if err != nil {
+			msg = "Failed to update profile in database"
+			status = http.StatusInternalServerError
+		}
+	} else {
+		status = http.StatusBadRequest
+		if err != nil {
+			msg = "User information given is malformed"
+		} else {
+			msg = "Cannot update profile of another user"
+		}
+	}
+	err = AuditedSendX(ctx, user, &Result{
+		Status: status,
+		Op:     "user_profile_update",
+		Msg:    msg,
+		OK:     err == nil,
+		Data:   nil,
+		Err:    ErrString(err),
+	})
+	return LogError("Sec:Hdl", err)
+}
