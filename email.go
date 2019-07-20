@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/smtp"
-
-	"github.com/varunamachi/vaali/vcmn"
-
-	"github.com/varunamachi/vaali/vlog"
 )
 
 //EmailConfig - configuration for sending email
@@ -23,11 +19,11 @@ type EmailConfig struct {
 //variable emainConfig for SMTP configuration - smtp.gmail.com:587
 func SendEmail(to, subject, meesage string) (err error) {
 	var emailConfig EmailConfig
-	err = vcmn.GetConfig("emailConfig", &emailConfig)
+	err = GetConfig("emailConfig", &emailConfig)
 	if err != nil {
-		return vlog.LogError("Net:EMail", err)
+		return LogError("Net:EMail", err)
 	}
-	// vcmn.DumpJSON(emailConfig)
+	// DumpJSON(emailConfig)
 	msg := "From: " + emailConfig.AppEMail + "\n" +
 		"To: " + to + "\n" +
 		"Subject: " + subject + "\n\n" +
@@ -44,42 +40,42 @@ func SendEmail(to, subject, meesage string) (err error) {
 	var conn *tls.Conn
 	conn, err = tls.Dial("tcp", smtpURL, tlsConfig)
 	if err != nil {
-		return vlog.LogError("Net:EMail", err)
+		return LogError("Net:EMail", err)
 	}
 	var client *smtp.Client
 	client, err = smtp.NewClient(conn, emailConfig.SMTPHost)
 	if err != nil {
-		return vlog.LogError("Net:EMail", err)
+		return LogError("Net:EMail", err)
 	}
 	err = client.Auth(auth)
 	if err != nil {
-		return vlog.LogError("Net:EMail", err)
+		return LogError("Net:EMail", err)
 	}
 
 	err = client.Mail(emailConfig.AppEMail)
 	if err != nil {
-		return vlog.LogError("Net:EMail", err)
+		return LogError("Net:EMail", err)
 	}
 
 	client.Rcpt(to)
 	var writer io.WriteCloser
 	writer, err = client.Data()
 	if err != nil {
-		return vlog.LogError("Net:EMail", err)
+		return LogError("Net:EMail", err)
 	}
 
 	_, err = writer.Write([]byte(msg))
 	if err != nil {
-		return vlog.LogError("Net:EMail", err)
+		return LogError("Net:EMail", err)
 	}
 
 	err = writer.Close()
 	if err != nil {
-		return vlog.LogError("Net:EMail", err)
+		return LogError("Net:EMail", err)
 	}
 
 	client.Quit()
-	return vlog.LogError("Net:EMail", err)
+	return LogError("Net:EMail", err)
 	// err = smtp.SendMail(
 	// 	smtpURL,
 	// 	auth,
