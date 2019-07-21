@@ -14,6 +14,14 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+//Network
+var categories = make(map[string][]*Endpoint)
+var endpoints = make([]*Endpoint, 0, 200)
+var e = echo.New()
+var accessPos = 0
+var rootPath = ""
+var jwtKey []byte
+
 //Endpoint - represents a REST endpoint with associated metadata
 type Endpoint struct {
 	Method   string      `json:"method"`
@@ -27,12 +35,12 @@ type Endpoint struct {
 
 //Result - result of an API call
 type Result struct {
-	Status int         `json:"status" bson:"status"`
-	Op     string      `json:"op" bson:"op"`
-	Msg    string      `json:"msg" bson:"msg"`
-	OK     bool        `json:"ok" bson:"ok"`
-	Err    string      `json:"error" bson:"error"`
-	Data   interface{} `json:"data" bson:"data"`
+	Status int         `json:"status"`
+	Op     string      `json:"op"`
+	Msg    string      `json:"msg"`
+	OK     bool        `json:"ok"`
+	Err    string      `json:"error"`
+	Data   interface{} `json:"data"`
 }
 
 //Options - options for initializing web APIs

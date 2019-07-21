@@ -43,7 +43,7 @@ func (mds *DataStorage) Update(
 	dtype string, key interface{}, value interface{}) (err error) {
 	conn := DefaultConn()
 	defer conn.Close()
-	// err = conn.C(dtype).Update(matcher, value)
+	err = conn.C(dtype).Update(bson.M{}, value)
 	return logMongoError("DB:Mongo", err)
 }
 

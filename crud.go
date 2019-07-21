@@ -114,6 +114,7 @@ func defaultSM(opern, name string) (int, string) {
 	return http.StatusOK, fmt.Sprintf("%s %s - successful", opern, name)
 }
 
+//DataStorage - defines a data storage
 type DataStorage interface {
 	Create(dataType string, data interface{}) error
 	Update(dataType string, key interface{}, data interface{}) error

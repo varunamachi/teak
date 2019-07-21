@@ -9,6 +9,10 @@ import (
 	echo "github.com/labstack/echo/v4"
 )
 
+//auth
+var authenticator Authenticator
+var authorizer Authorizer
+
 //M - map of string to any
 type M map[string]interface{}
 

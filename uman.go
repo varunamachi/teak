@@ -1,4 +1,4 @@
-package teak
+package teak 
 
 import (
 	"errors"
@@ -9,6 +9,9 @@ import (
 	echo "github.com/labstack/echo/v4"
 	uuid "github.com/satori/go.uuid"
 )
+
+//User management
+var userStorage UserStorage
 
 func getUserManagementEndpoints() []*Endpoint {
 	return []*Endpoint{
