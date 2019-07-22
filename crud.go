@@ -94,20 +94,20 @@ func getDataEndpoints() []*Endpoint {
 	}
 }
 
-//StoredItem - represents a value that is stored in database and is
-//compatible with generic queries and handlers. Any struct with a need to
-//support generic CRUD operations must implement and register a factory
-//method to return it
-type StoredItem interface {
-	ID() interface{}
-	SetCreationInfo(at time.Time, by string)
-	SetModInfo(at time.Time, by string)
+//StoredItemHandler - needs to be implemented for any data type that is expected
+//to work with generic crud system
+type StoredItemHandler interface {
+	UniqueKeyField() string
+	GetKey(item interface{}) interface{}
+	SetModInfo(item interface{}, at time.Time, by string)
+	CreateInstance(by string) interface{}
 }
 
-//FactoryFunc - Function for creating an instance of data type
-type FactoryFunc func() StoredItem
+var handlers = make(map[string]StoredItemHandler)
 
-var factories = make(map[string]FactoryFunc)
+//FactoryFunc - Function for creating an instance of data type
+// type FactoryFunc func() StoredItem
+// var factories = make(map[string]FactoryFunc)
 
 //defaultSM - default status and message
 func defaultSM(opern, name string) (int, string) {
@@ -116,11 +116,23 @@ func defaultSM(opern, name string) (int, string) {
 
 //DataStorage - defines a data storage
 type DataStorage interface {
-	Create(dataType string, data interface{}) error
-	Update(dataType string, key interface{}, data interface{}) error
-	Delete(dataType string, key interface{}) error
+	Name() string
 	Count(dtype string, filter *Filter) (count int, err error)
-	RetrieveOne(dataType string, key interface{}, data interface{}) error
+	Create(dataType string, data interface{}) error
+	Update(
+		dataType string,
+		keyField string,
+		key interface{},
+		data interface{}) error
+	Delete(
+		dataType string,
+		keyField string,
+		key interface{}) error
+	RetrieveOne(
+		dataType string,
+		keyField string,
+		key interface{},
+		data interface{}) error
 	Retrieve(dtype string,
 		sortFiled string,
 		offset int,
@@ -133,7 +145,8 @@ type DataStorage interface {
 		limit int,
 		filter *Filter,
 		out interface{}) (count int, err error)
-	GetFilterValues(dtype string,
+	GetFilterValues(
+		dtype string,
 		specs FilterSpecList) (values M, err error)
 	GetFilterValuesX(
 		dtype string,
@@ -147,125 +160,155 @@ var dataStorage DataStorage
 func createObject(ctx echo.Context) (err error) {
 	dtype := ctx.Param("dataType")
 	status, msg := defaultSM("Create", dtype)
-	var data StoredItem
-	if len(dtype) != 0 {
-		data, err = bind(ctx, dtype)
-		if err == nil {
-			data.SetCreationInfo(time.Now(), GetString(ctx, "userID"))
-			err = dataStorage.Create(dtype, data)
-			if err != nil {
-				msg = fmt.Sprintf("Failed to create %s in database", dtype)
-				status = http.StatusInternalServerError
-			}
-		} else {
-			msg = fmt.Sprintf(
-				"Failed to retrieve %s information from the request", dtype)
-			status = http.StatusBadRequest
-		}
-	} else {
-		msg = "Invalid empty data type given"
+	var data interface{}
+	//Log any potential error and send the response
+	defer func() {
+		AuditedSendX(ctx, &data, &Result{
+			Status: status,
+			Op:     dtype + "_create",
+			Msg:    msg,
+			OK:     err == nil,
+			Data:   nil,
+			Err:    ErrString(err),
+		})
+		LogError("t.crud.api", err)
+	}()
+
+	handler := handlers[dtype]
+	if handler == nil {
+		err = fmt.Errorf("Failed to find handler for data type '%s'", dtype)
 		status = http.StatusBadRequest
-		err = errors.New(msg)
+		return err
 	}
-	AuditedSendX(ctx, &data, &Result{
-		Status: status,
-		Op:     dtype + "_create",
-		Msg:    msg,
-		OK:     err == nil,
-		Data:   nil,
-		Err:    ErrString(err),
-	})
-	return LogError("S:Entity", err)
+
+	data = handler.CreateInstance(GetString(ctx, "userID"))
+	err = dataStorage.Create(dtype, data)
+	if err != nil {
+		msg = fmt.Sprintf("Failed to create item of type '%s' in data store",
+			dtype)
+		status = http.StatusInternalServerError
+	}
+
+	return err
 }
 
 func updateObject(ctx echo.Context) (err error) {
 	dtype := ctx.Param("dataType")
 	status, msg := defaultSM("Update", dtype)
-	var data StoredItem
-	if len(dtype) != 0 {
-		data, err = bind(ctx, dtype)
-		if err == nil {
-			data.SetModInfo(time.Now(), GetString(ctx, "userID"))
-			err = dataStorage.Update(dtype, data.ID(), data)
-			if err != nil {
-				msg = fmt.Sprintf("Failed to update %s in database", dtype)
-				status = http.StatusInternalServerError
-			}
-		} else {
-			msg = fmt.Sprintf(
-				"Failed to retrieve %s information from the request", dtype)
-			status = http.StatusBadRequest
-		}
-	} else {
-		msg = "Invalid empty data type given"
+	var data interface{}
+	//Log error if any and send response at the end
+	defer func() {
+		LogError("t.crud.api", err)
+		AuditedSendX(ctx, &data, &Result{
+			Status: status,
+			Op:     dtype + "_update",
+			Msg:    msg,
+			OK:     err == nil,
+			Data:   nil,
+			Err:    ErrString(err),
+		})
+	}()
+	//Get the updated object from request
+	err = ctx.Bind(data)
+	if err != nil {
+		err = fmt.Errorf("Failed to retrive updated object for type '%s'",
+			dtype)
 		status = http.StatusBadRequest
-		err = errors.New(msg)
+		return err
 	}
-	AuditedSendX(ctx, &data, &Result{
-		Status: status,
-		Op:     dtype + "_update",
-		Msg:    msg,
-		OK:     err == nil,
-		Data:   nil,
-		Err:    ErrString(err),
-	})
-	return LogError("S:Entity", err)
+
+	//Get the data type handler for updating the modification info:
+	handler := handlers[dtype]
+	if handler == nil {
+		err = fmt.Errorf("Failed to find handler for data type '%s'", dtype)
+		status = http.StatusBadRequest
+		return err
+	}
+
+	//Update the modification  info:
+	handler.SetModInfo(data, time.Now(), GetString(ctx, "userID"))
+	//Get the identifier for the item
+	key := handler.GetKey(data)
+	//And update...
+	err = dataStorage.Update(dtype, handler.UniqueKeyField(), key, data)
+
+	if err != nil {
+		msg = fmt.Sprintf("Failed to create item of type '%s' in data store",
+			dtype)
+		status = http.StatusInternalServerError
+	}
+	return err
 }
 
 func deleteObject(ctx echo.Context) (err error) {
 	dtype := ctx.Param("dataType")
 	status, msg := defaultSM("Delete", dtype)
 	id := ctx.Param("id")
-	if len(dtype) != 0 {
-		err = dataStorage.Delete(dtype, id)
-		if err != nil {
-			msg = fmt.Sprintf("Failed to delete %s from database", dtype)
-			status = http.StatusInternalServerError
-		}
-	} else {
-		msg = "Invalid empty data type given"
+
+	defer func() {
+		err = AuditedSend(ctx, &Result{
+			Status: status,
+			Op:     dtype + "_delete",
+			Msg:    msg,
+			OK:     err == nil,
+			Data:   id,
+			Err:    ErrString(err),
+		})
+		LogError("t.crud.api", err)
+	}()
+
+	//Get the data type handler for the given data type:
+	handler := handlers[dtype]
+	if handler == nil {
+		err = fmt.Errorf("Failed to find handler for data type '%s'", dtype)
 		status = http.StatusBadRequest
-		err = errors.New(msg)
+		return err
 	}
-	err = AuditedSend(ctx, &Result{
-		Status: status,
-		Op:     dtype + "_delete",
-		Msg:    msg,
-		OK:     err == nil,
-		Data:   id,
-		Err:    ErrString(err),
-	})
-	return LogError("S:Entity", err)
+
+	err = dataStorage.Delete(dtype, handler.UniqueKeyField(), id)
+	if err != nil {
+		msg = fmt.Sprintf("Failed to delete %s from database", dtype)
+		status = http.StatusInternalServerError
+	}
+	return err
 }
 
 func retrieveOne(ctx echo.Context) (err error) {
 	dtype := ctx.Param("dataType")
 	status, msg := defaultSM("Get", dtype)
-	data := M{}
 	id := ctx.Param("id")
-	if len(dtype) != 0 {
-		err = dataStorage.RetrieveOne(dtype, id, &data)
-		if err != nil {
-			msg = fmt.Sprintf(
-				"Failed to retrieve %s from database, entity with ID %s",
-				dtype,
-				id)
-			status = http.StatusInternalServerError
-		}
-	} else {
-		msg = "Invalid empty data type given"
+	var data interface{}
+
+	defer func() {
+		err = SendAndAuditOnErr(ctx, &Result{
+			Status: status,
+			Op:     dtype + "_fetch",
+			Msg:    msg,
+			OK:     err == nil,
+			Data:   data,
+			Err:    ErrString(err),
+		})
+		LogError("t.crud.api", err)
+	}()
+
+	//Get the data type handler for the given data type:
+	handler := handlers[dtype]
+	if handler == nil {
+		err = fmt.Errorf("Failed to find handler for data type '%s'", dtype)
 		status = http.StatusBadRequest
-		err = errors.New(msg)
+		return err
 	}
-	err = SendAndAuditOnErr(ctx, &Result{
-		Status: status,
-		Op:     dtype + "_fetch",
-		Msg:    msg,
-		OK:     err == nil,
-		Data:   data,
-		Err:    ErrString(err),
-	})
-	return LogError("S:Entity", err)
+	data = handler.CreateInstance("")
+	err = dataStorage.RetrieveOne(dtype, handler.UniqueKeyField(), id, &data)
+
+	if err != nil {
+		msg = fmt.Sprintf(
+			"Failed to retrieve %s from database, entity with ID %s",
+			dtype,
+			id)
+		status = http.StatusInternalServerError
+	}
+	return err
 }
 
 func retrieve(ctx echo.Context) (err error) {
@@ -451,18 +494,4 @@ func getFilterValuesX(ctx echo.Context) (err error) {
 		Err:    ErrString(err),
 	})
 	return LogError("S:Entity", err)
-}
-
-func bind(ctx echo.Context, dataType string) (
-	data StoredItem, err error) {
-	if creator, found := factories[dataType]; found {
-		data = creator()
-	}
-	if data != nil {
-		err = ctx.Bind(data)
-	} else {
-		err = fmt.Errorf("Could not find factory function for data type %s",
-			dataType)
-	}
-	return data, err
 }

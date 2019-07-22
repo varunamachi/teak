@@ -40,7 +40,11 @@ func (mds *DataStorage) Create(
 //Update - updates the records in 'dtype' collection which are matched by
 //the matcher query
 func (mds *DataStorage) Update(
-	dtype string, key interface{}, value interface{}) (err error) {
+	dtype string,
+	keyField string,
+	key interface{},
+	value interface{}) (err error) {
+
 	conn := DefaultConn()
 	defer conn.Close()
 	err = conn.C(dtype).Update(bson.M{}, value)
@@ -48,7 +52,11 @@ func (mds *DataStorage) Update(
 }
 
 //Delete - deletes record matched by the matcher from collection 'dtype'
-func (mds *DataStorage) Delete(dtype string, key interface{}) (err error) {
+func (mds *DataStorage) Delete(
+	dtype string,
+	keyField string,
+	key interface{}) (err error) {
+
 	conn := DefaultConn()
 	defer conn.Close()
 	// err = conn.C(dtype).Remove(matcher)
@@ -57,7 +65,11 @@ func (mds *DataStorage) Delete(dtype string, key interface{}) (err error) {
 
 //RetrieveOne - gets a record matched by given matcher from collection 'dtype'
 func (mds *DataStorage) RetrieveOne(
-	dtype string, key interface{}, out interface{}) (err error) {
+	dtype string,
+	keyField string,
+	key interface{},
+	out interface{}) (err error) {
+
 	conn := DefaultConn()
 	defer conn.Close()
 	// err = conn.C(dtype).Find(matcher).One(out)
