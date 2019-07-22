@@ -1,4 +1,4 @@
-package teak 
+package teak
 
 import (
 	"bytes"
@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/varunamachi/vaali/vsec"
 )
 
 //ResultReader - proto result, use it to read the Result with proper data struct
@@ -92,7 +90,7 @@ type Client struct {
 	VersionStr string
 	BaseURL    string
 	Token      string
-	User       *vsec.User
+	User       *User
 }
 
 //NewClient - creates a new rest client
@@ -112,7 +110,7 @@ func NewClient(address, appName, versionStr string) *Client {
 
 //Get - performs a get request
 func (client *Client) Get(
-	access vsec.AuthLevel,
+	access AuthLevel,
 	urlArgs ...string) (rr *ResultReader) {
 	var req *http.Request
 	var resp *http.Response
@@ -134,7 +132,7 @@ func (client *Client) Get(
 
 //Delete - performs a delete request
 func (client *Client) Delete(
-	access vsec.AuthLevel,
+	access AuthLevel,
 	urlArgs ...string) (rr *ResultReader) {
 	var req *http.Request
 	var resp *http.Response
@@ -157,7 +155,7 @@ func (client *Client) Delete(
 //Post - performs a post request
 func (client *Client) Post(
 	content interface{},
-	access vsec.AuthLevel,
+	access AuthLevel,
 	urlArgs ...string) (rr *ResultReader) {
 	return client.putOrPost("POST", access, content, urlArgs...)
 }
@@ -165,7 +163,7 @@ func (client *Client) Post(
 //Put - performs a put request
 func (client *Client) Put(
 	content interface{},
-	access vsec.AuthLevel,
+	access AuthLevel,
 	urlArgs ...string) (rr *ResultReader) {
 	return client.putOrPost("PUT", access, content, urlArgs...)
 }
@@ -173,20 +171,20 @@ func (client *Client) Put(
 //CreateURL - constructs URL from base URL, access level and the given
 //path components
 func (client *Client) CreateURL(
-	access vsec.AuthLevel,
+	access AuthLevel,
 	args ...string) (str string) {
 	var buffer bytes.Buffer
 	accessStr := ""
 	switch access {
-	case vsec.Super:
+	case Super:
 		accessStr = "in/r0/"
-	case vsec.Admin:
+	case Admin:
 		accessStr = "in/r1/"
-	case vsec.Normal:
+	case Normal:
 		accessStr = "in/r2/"
-	case vsec.Monitor:
+	case Monitor:
 		accessStr = "in/r3/"
-	case vsec.Public:
+	case Public:
 		accessStr = ""
 	}
 	buffer.WriteString(client.BaseURL)
@@ -210,10 +208,10 @@ func (client *Client) Login(userID, password string) (err error) {
 	data["userID"] = userID
 	data["password"] = password
 	loginResult := struct {
-		Token string     `json:"token"`
-		User  *vsec.User `json:"user"`
+		Token string `json:"token"`
+		User  *User  `json:"user"`
 	}{}
-	rr := client.Post(data, vsec.Public, "login")
+	rr := client.Post(data, Public, "login")
 	err = rr.Read(&loginResult)
 	if err == nil {
 		client.Token = loginResult.Token
@@ -232,7 +230,7 @@ func (client *Client) do(req *http.Request) (
 
 func (client *Client) putOrPost(
 	method string,
-	access vsec.AuthLevel,
+	access AuthLevel,
 	content interface{},
 	urlArgs ...string) (rr *ResultReader) {
 	var data []byte
