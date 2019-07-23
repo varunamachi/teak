@@ -97,13 +97,14 @@ func getDataEndpoints() []*Endpoint {
 //StoredItemHandler - needs to be implemented for any data type that is expected
 //to work with generic crud system
 type StoredItemHandler interface {
+	DataType() string
 	UniqueKeyField() string
 	GetKey(item interface{}) interface{}
 	SetModInfo(item interface{}, at time.Time, by string)
 	CreateInstance(by string) interface{}
 }
 
-var handlers = make(map[string]StoredItemHandler)
+var siHandlers = make(map[string]StoredItemHandler)
 
 //FactoryFunc - Function for creating an instance of data type
 // type FactoryFunc func() StoredItem
@@ -113,49 +114,6 @@ var handlers = make(map[string]StoredItemHandler)
 func defaultSM(opern, name string) (int, string) {
 	return http.StatusOK, fmt.Sprintf("%s %s - successful", opern, name)
 }
-
-//DataStorage - defines a data storage
-type DataStorage interface {
-	Name() string
-	Count(dtype string, filter *Filter) (count int, err error)
-	Create(dataType string, data interface{}) error
-	Update(
-		dataType string,
-		keyField string,
-		key interface{},
-		data interface{}) error
-	Delete(
-		dataType string,
-		keyField string,
-		key interface{}) error
-	RetrieveOne(
-		dataType string,
-		keyField string,
-		key interface{},
-		data interface{}) error
-	Retrieve(dtype string,
-		sortFiled string,
-		offset int,
-		limit int,
-		filter *Filter,
-		out interface{}) error
-	RetrieveWithCount(dtype string,
-		sortFiled string,
-		offset int,
-		limit int,
-		filter *Filter,
-		out interface{}) (count int, err error)
-	GetFilterValues(
-		dtype string,
-		specs FilterSpecList) (values M, err error)
-	GetFilterValuesX(
-		dtype string,
-		field string,
-		specs FilterSpecList,
-		filter *Filter) (values M, err error)
-}
-
-var dataStorage DataStorage
 
 func createObject(ctx echo.Context) (err error) {
 	dtype := ctx.Param("dataType")
@@ -174,7 +132,7 @@ func createObject(ctx echo.Context) (err error) {
 		LogError("t.crud.api", err)
 	}()
 
-	handler := handlers[dtype]
+	handler := siHandlers[dtype]
 	if handler == nil {
 		err = fmt.Errorf("Failed to find handler for data type '%s'", dtype)
 		status = http.StatusBadRequest
@@ -218,7 +176,7 @@ func updateObject(ctx echo.Context) (err error) {
 	}
 
 	//Get the data type handler for updating the modification info:
-	handler := handlers[dtype]
+	handler := siHandlers[dtype]
 	if handler == nil {
 		err = fmt.Errorf("Failed to find handler for data type '%s'", dtype)
 		status = http.StatusBadRequest
@@ -258,7 +216,7 @@ func deleteObject(ctx echo.Context) (err error) {
 	}()
 
 	//Get the data type handler for the given data type:
-	handler := handlers[dtype]
+	handler := siHandlers[dtype]
 	if handler == nil {
 		err = fmt.Errorf("Failed to find handler for data type '%s'", dtype)
 		status = http.StatusBadRequest
@@ -292,7 +250,7 @@ func retrieveOne(ctx echo.Context) (err error) {
 	}()
 
 	//Get the data type handler for the given data type:
-	handler := handlers[dtype]
+	handler := siHandlers[dtype]
 	if handler == nil {
 		err = fmt.Errorf("Failed to find handler for data type '%s'", dtype)
 		status = http.StatusBadRequest

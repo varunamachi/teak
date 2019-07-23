@@ -143,12 +143,6 @@ type UserStorage interface {
 	//and verification ID
 	VerifyUser(userID, verID string) (err error)
 
-	//CreateIndices - creates mongoDB indeces for tables used for user management
-	CreateIndices() (err error)
-
-	//CleanData - cleans user management related data from database
-	CleanData() (err error)
-
 	//UpdateProfile - updates user details - this should be used when user
 	//logged in is updating own user account
 	UpdateProfile(user *User) (err error)

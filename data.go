@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+var dataStorage DataStorage
+
 //Version - represents version of the application
 type Version struct {
 	Major int `json:"major"`
@@ -154,4 +156,49 @@ type FilterSpecList []*FilterSpec
 type FilterVal struct {
 	Name  string `json:"name"`
 	Count int    `json:"count"`
+}
+
+//DataStorage - defines a data storage
+type DataStorage interface {
+	Name() string
+	Count(dtype string, filter *Filter) (count int, err error)
+	Create(dataType string, data interface{}) error
+	Update(
+		dataType string,
+		keyField string,
+		key interface{},
+		data interface{}) error
+	Delete(
+		dataType string,
+		keyField string,
+		key interface{}) error
+	RetrieveOne(
+		dataType string,
+		keyField string,
+		key interface{},
+		data interface{}) error
+	Retrieve(dtype string,
+		sortFiled string,
+		offset int,
+		limit int,
+		filter *Filter,
+		out interface{}) error
+	RetrieveWithCount(dtype string,
+		sortFiled string,
+		offset int,
+		limit int,
+		filter *Filter,
+		out interface{}) (count int, err error)
+	GetFilterValues(
+		dtype string,
+		specs FilterSpecList) (values M, err error)
+	GetFilterValuesX(
+		dtype string,
+		field string,
+		specs FilterSpecList,
+		filter *Filter) (values M, err error)
+
+	Setup(params M) error
+	Reset() error
+	Destroy() error
 }

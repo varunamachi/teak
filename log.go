@@ -98,9 +98,9 @@ func (level Level) String() string {
 	return ToString(level)
 }
 
-//InitWithOptions - initializes the logger with non default options. If you
+//InitLogger - initializes the logger with non default options. If you
 //want default behavior, no need to call any init functions
-func InitWithOptions(lc LoggerConfig) {
+func InitLogger(lc LoggerConfig) {
 	lconf = lc
 	if lc.LogConsole {
 		lconf.Logger.RegisterWriter(NewConsoleWriter())

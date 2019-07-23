@@ -47,7 +47,9 @@ func (mds *DataStorage) Update(
 
 	conn := DefaultConn()
 	defer conn.Close()
-	err = conn.C(dtype).Update(bson.M{}, value)
+	err = conn.C(dtype).Update(bson.M{
+		keyField: key,
+	}, value)
 	return logMongoError("DB:Mongo", err)
 }
 
@@ -59,7 +61,9 @@ func (mds *DataStorage) Delete(
 
 	conn := DefaultConn()
 	defer conn.Close()
-	// err = conn.C(dtype).Remove(matcher)
+	err = conn.C(dtype).Remove(bson.M{
+		keyField: key,
+	})
 	return logMongoError("DB:Mongo", err)
 }
 
@@ -72,7 +76,9 @@ func (mds *DataStorage) RetrieveOne(
 
 	conn := DefaultConn()
 	defer conn.Close()
-	// err = conn.C(dtype).Find(matcher).One(out)
+	err = conn.C(dtype).Find(bson.M{
+		keyField: key,
+	}).One(out)
 	return logMongoError("DB:Mongo", err)
 }
 
