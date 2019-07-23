@@ -197,7 +197,6 @@ type DataStorage interface {
 		field string,
 		specs FilterSpecList,
 		filter *Filter) (values M, err error)
-
 	Setup(params M) error
 	Reset() error
 	Destroy() error
