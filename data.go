@@ -3,6 +3,8 @@ package teak
 import (
 	"fmt"
 	"time"
+
+	"gopkg.in/urfave/cli.v1"
 )
 
 var dataStorage DataStorage
@@ -197,7 +199,24 @@ type DataStorage interface {
 		field string,
 		specs FilterSpecList,
 		filter *Filter) (values M, err error)
+
+	Init() error
 	Setup(params M) error
 	Reset() error
 	Destroy() error
+	Wrap(cmd *cli.Command) *cli.Command
+	GetManageCommands() []cli.Command
 }
+
+//@TODO Data store ini shall do these
+// var store vsec.UserStorage
+// var auditor vevt.EventAuditor
+// store = &vuman.MongoStorage{}
+// auditor = &vevt.MongoAuditor{}
+// authr := vuman.MongoAuthenticator
+// if !requiresMongo {
+// 	store = &vuman.PGStorage{}
+// 	auditor = &vevt.PGAuditor{}
+// }
+// vuman.SetStorageStrategy(store)
+// vevt.SetEventAuditor(auditor)

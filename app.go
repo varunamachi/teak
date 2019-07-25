@@ -12,11 +12,8 @@ import (
 //App - the application itself
 type App struct {
 	cli.App
-	Modules          []*Module `json:"modules"`
-	NetOptions       Options   `json:"netOptions"`
-	IsService        bool      `json:"isService"`
-	RequiresMongo    bool      `json:"requiresMongo"`
-	RequiredPostgres bool      `json:"requiresPostgres"`
+	Modules    []*Module `json:"modules"`
+	NetOptions Options   `json:"netOptions"`
 }
 
 //ModuleConfigFunc Signature used by functions that are used to configure a
@@ -52,13 +49,6 @@ func (app *App) AddModule(module *Module) {
 
 //Exec - runs the applications
 func (app *App) Exec(args []string) (err error) {
-	// if app.IsService {
-	// 	AddEndpoints(getUserManagementEndpoints()...)
-	// }
-	// if app.RequiresMongo {
-	// 	app.Commands = append(app.Commands, GetCommands(app)...)
-	// }
-
 	for _, module := range app.Modules {
 		if module.Initialize != nil {
 			err = module.Initialize(app)
@@ -74,9 +64,7 @@ func (app *App) Exec(args []string) (err error) {
 		for _, fc := range module.ItemHandlers {
 			siHandlers[fc.DataType()] = fc
 		}
-		if app.IsService {
-			AddEndpoints(module.Endpoints...)
-		}
+		AddEndpoints(module.Endpoints...)
 	}
 	if err == nil {
 		InitServer(app.NetOptions)
@@ -85,26 +73,17 @@ func (app *App) Exec(args []string) (err error) {
 	return err
 }
 
-//NewWebApp - creates a new web application with default options
-func NewWebApp(
+//NewApp - creates a new application with default options
+func NewApp(
 	name string,
 	appVersion Version,
-	apiVersion string,
-	authors []cli.Author,
-	requiresMongo bool, desc string) (app *App) {
+	storage DataStorage,
+	desc string) (app *App) {
 
-	//@TODO take these decisions in data store impl
-	// var store vsec.UserStorage
-	// var auditor vevt.EventAuditor
-	// store = &vuman.MongoStorage{}
-	// auditor = &vevt.MongoAuditor{}
-	// authr := vuman.MongoAuthenticator
-	// if !requiresMongo {
-	// 	store = &vuman.PGStorage{}
-	// 	auditor = &vevt.PGAuditor{}
-	// }
-	// vuman.SetStorageStrategy(store)
-	// vevt.SetEventAuditor(auditor)
+	dataStorage = storage
+	if err := dataStorage.Init(); err != nil {
+		Fatal("t.app.dataStore", "Failed to initilize application store")
+	}
 	InitLogger(LoggerConfig{
 		Logger:      NewDirectLogger(),
 		LogConsole:  true,
@@ -113,20 +92,22 @@ func NewWebApp(
 
 	LoadConfig(name)
 	app = &App{
-		IsService:     true,
-		RequiresMongo: true,
 		App: cli.App{
-			Name:      name,
-			Commands:  make([]cli.Command, 0, 100),
-			Version:   appVersion.String(),
-			Authors:   authors,
+			Name:     name,
+			Commands: make([]cli.Command, 0, 100),
+			Version:  appVersion.String(),
+			Authors: []cli.Author{
+				cli.Author{
+					Name: "The " + name + " team",
+				},
+			},
 			Usage:     desc,
 			ErrWriter: ioutil.Discard,
 			Metadata:  map[string]interface{}{},
 		},
 		NetOptions: Options{
 			RootName:      "",
-			APIVersion:    apiVersion,
+			APIVersion:    "v0", //TODO - Whoever registers should tell
 			Authenticator: dummyAuthenticator,
 			Authorizer:    nil,
 		},
@@ -137,47 +118,47 @@ func NewWebApp(
 }
 
 //NewSimpleApp - an app that is not a service and does not use mongodb
-func NewSimpleApp(
-	name string,
-	appVersion Version,
-	apiVersion string,
-	authors []cli.Author,
-	requiresMongo bool,
-	desc string) (app *App) {
-	InitLogger(LoggerConfig{
-		Logger:      NewDirectLogger(),
-		LogConsole:  true,
-		FilterLevel: TraceLevel,
-	})
-	//@TODO take these decisions in data store impl
-	// var store vsec.UserStorage
-	// var auditor vevt.EventAuditor
-	// store = &vuman.MongoStorage{}
-	// auditor = &vevt.MongoAuditor{}
-	// if !requiresMongo {
-	// 	store = &vuman.PGStorage{}
-	// 	auditor = &vevt.PGAuditor{}
-	// }
-	// vuman.SetStorageStrategy(store)
-	// vevt.SetEventAuditor(auditor)
-	LoadConfig(name)
-	app = &App{
-		IsService:     false,
-		RequiresMongo: requiresMongo,
-		App: cli.App{
-			Name:      name,
-			Commands:  make([]cli.Command, 0, 100),
-			Version:   appVersion.String(),
-			Authors:   authors,
-			Usage:     desc,
-			ErrWriter: ioutil.Discard,
-			Metadata:  map[string]interface{}{},
-		},
-		Modules: make([]*Module, 0, 10),
-	}
-	app.Metadata["vapp"] = app
-	return app
-}
+// func NewSimpleApp(
+// 	name string,
+// 	appVersion Version,
+// 	apiVersion string,
+// 	authors []cli.Author,
+// 	requiresMongo bool,
+// 	desc string) (app *App) {
+// 	InitLogger(LoggerConfig{
+// 		Logger:      NewDirectLogger(),
+// 		LogConsole:  true,
+// 		FilterLevel: TraceLevel,
+// 	})
+// 	//@TODO take these decisions in data store impl
+// 	// var store vsec.UserStorage
+// 	// var auditor vevt.EventAuditor
+// 	// store = &vuman.MongoStorage{}
+// 	// auditor = &vevt.MongoAuditor{}
+// 	// if !requiresMongo {
+// 	// 	store = &vuman.PGStorage{}
+// 	// 	auditor = &vevt.PGAuditor{}
+// 	// }
+// 	// vuman.SetStorageStrategy(store)
+// 	// vevt.SetEventAuditor(auditor)
+// 	LoadConfig(name)
+// 	app = &App{
+// 		IsService:     false,
+// 		RequiresMongo: requiresMongo,
+// 		App: cli.App{
+// 			Name:      name,
+// 			Commands:  make([]cli.Command, 0, 100),
+// 			Version:   appVersion.String(),
+// 			Authors:   authors,
+// 			Usage:     desc,
+// 			ErrWriter: ioutil.Discard,
+// 			Metadata:  map[string]interface{}{},
+// 		},
+// 		Modules: make([]*Module, 0, 10),
+// 	}
+// 	app.Metadata["vapp"] = app
+// 	return app
+// }
 
 //Setup - sets up the application and the registered module. This is not
 //initialization and needs to be called when app/module configuration changes.

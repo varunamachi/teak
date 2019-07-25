@@ -2,6 +2,7 @@ package pg
 
 import (
 	"github.com/varunamachi/teak"
+	"gopkg.in/urfave/cli.v1"
 )
 
 //DataStorage - Postgres implementation for DataStorage interface
@@ -84,4 +85,36 @@ func (mds *DataStorage) GetFilterValuesX(
 	specs teak.FilterSpecList,
 	filter *teak.Filter) (values teak.M, err error) {
 	return values, teak.LogError("t.crud.pg", err)
+}
+
+//Init - initialize the data storage - this needs to be run on each application
+//start up
+func (mds *DataStorage) Init() (err error) {
+	return err
+}
+
+//Setup - setup has to be run when data storage structure changes, such as
+//adding index, altering tables etc
+func (mds *DataStorage) Setup(params teak.M) (err error) {
+	return err
+}
+
+//Reset - reset clears the data without affecting the structure/schema
+func (mds *DataStorage) Reset() (err error) {
+	return err
+}
+
+//Destroy - deletes data and also structure
+func (mds *DataStorage) Destroy() (err error) {
+	return err
+}
+
+//Wrap - wraps a command with flags required to connect to this data source
+func (mds *DataStorage) Wrap(cmd *cli.Command) (out *cli.Command) {
+	return out
+}
+
+//GetManageCommands - commands that can be used to manage this data storage
+func (mds *DataStorage) GetManageCommands() (commands []cli.Command) {
+	return commands
 }
