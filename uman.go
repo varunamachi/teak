@@ -138,7 +138,13 @@ func SetUserStorage(storage UserStorage) {
 	userStorage = storage
 }
 
-func updateUserInfo(user *User) (err error) {
+//GetUserStorage - get the configured user storage
+func GetUserStorage() UserStorage {
+	return userStorage
+}
+
+//UpdateUserInfo - updates common user fields
+func UpdateUserInfo(user *User) (err error) {
 	if len(user.ID) == 0 {
 		// @TODO - store hash of user ID
 		user.ID = Hash(user.Email)
@@ -166,7 +172,7 @@ func createUser(ctx echo.Context) (err error) {
 		user.Props = M{
 			"admin-created": true,
 		}
-		updateUserInfo(&user)
+		UpdateUserInfo(&user)
 		err = userStorage.CreateUser(&user)
 		if err != nil {
 			msg = "Failed to create user in database"
@@ -204,7 +210,7 @@ func registerUser(ctx echo.Context) (err error) {
 	err = ctx.Bind(&upw)
 	if err == nil {
 		upw.User.Auth = Normal
-		updateUserInfo(&upw.User)
+		UpdateUserInfo(&upw.User)
 		err = userStorage.CreateUser(&upw.User)
 		if err != nil {
 			msg = "Failed to register user in database"

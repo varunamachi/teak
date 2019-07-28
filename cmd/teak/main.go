@@ -1,5 +1,6 @@
 package main
 
-// func main() {
-// 	store :=
-// }
+func main() {
+	// store := mongo.NewStorage()
+	// authtr := mongo.Authenticator
+}

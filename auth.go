@@ -64,9 +64,9 @@ type User struct {
 	VerID       string    `json:"verID"`
 	PwdExpiry   time.Time `json:"pwdExpiry"`
 	CreatedAt   time.Time `json:"createdAt"`
-	CreatedBy   string    `json:"createdBy`
+	CreatedBy   string    `json:"createdBy"`
 	ModifiedAt  time.Time `json:"modifiedAt"`
-	ModifiedBy  string    `json:"modifiedBy`
+	ModifiedBy  string    `json:"modifiedBy"`
 	VerfiedDate time.Time `json:"verified"`
 	Props       M         `json:"props"`
 }

@@ -10,8 +10,13 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
-//DataStorage - MongoDB implementation for DataStorage interface
-type DataStorage struct{}
+//dataStorage - MongoDB implementation for dataStorage interface
+type dataStorage struct{}
+
+//NewStorage - creates a new mongodb based data storage implementation
+func NewStorage() teak.DataStorage {
+	return &dataStorage{}
+}
 
 //logMongoError - if error is not mog.ErrNotFound return null otherwise log the
 //error and return the given error
@@ -29,8 +34,12 @@ func logMongoError(module string, err error) (out error) {
 	return out
 }
 
+func (mds *dataStorage) Name() string {
+	return "mongo"
+}
+
 //Create - creates an record in 'dtype' collection
-func (mds *DataStorage) Create(
+func (mds *dataStorage) Create(
 	dtype string, value interface{}) (err error) {
 	conn := DefaultConn()
 	defer conn.Close()
@@ -40,7 +49,7 @@ func (mds *DataStorage) Create(
 
 //Update - updates the records in 'dtype' collection which are matched by
 //the matcher query
-func (mds *DataStorage) Update(
+func (mds *dataStorage) Update(
 	dtype string,
 	keyField string,
 	key interface{},
@@ -55,7 +64,7 @@ func (mds *DataStorage) Update(
 }
 
 //Delete - deletes record matched by the matcher from collection 'dtype'
-func (mds *DataStorage) Delete(
+func (mds *dataStorage) Delete(
 	dtype string,
 	keyField string,
 	key interface{}) (err error) {
@@ -69,7 +78,7 @@ func (mds *DataStorage) Delete(
 }
 
 //RetrieveOne - gets a record matched by given matcher from collection 'dtype'
-func (mds *DataStorage) RetrieveOne(
+func (mds *dataStorage) RetrieveOne(
 	dtype string,
 	keyField string,
 	key interface{},
@@ -84,12 +93,12 @@ func (mds *DataStorage) RetrieveOne(
 }
 
 //Count - counts the number of items for data type
-func (mds *DataStorage) Count(
+func (mds *dataStorage) Count(
 	dtype string, filter *teak.Filter) (count int, err error) {
 	//@TODO handle filters
 	conn := DefaultConn()
 	defer conn.Close()
-	selector := generateSelector(filter)
+	selector := GenerateSelector(filter)
 	count, err = conn.C(dtype).
 		Find(selector).
 		Count()
@@ -98,14 +107,14 @@ func (mds *DataStorage) Count(
 
 //Retrieve - gets all the items from collection 'dtype' selected by filter &
 //paged
-func (mds *DataStorage) Retrieve(
+func (mds *dataStorage) Retrieve(
 	dtype string,
 	sortFiled string,
 	offset int,
 	limit int,
 	filter *teak.Filter,
 	out interface{}) (err error) {
-	selector := generateSelector(filter)
+	selector := GenerateSelector(filter)
 	conn := DefaultConn()
 	defer conn.Close()
 	err = conn.C(dtype).
@@ -119,7 +128,7 @@ func (mds *DataStorage) Retrieve(
 
 //RetrieveWithCount - gets all the items from collection 'dtype' selected by
 //filter & paged also gives the total count of items selected by filter
-func (mds *DataStorage) RetrieveWithCount(
+func (mds *dataStorage) RetrieveWithCount(
 	dtype string,
 	sortFiled string,
 	offset int,
@@ -128,7 +137,7 @@ func (mds *DataStorage) RetrieveWithCount(
 	out interface{}) (count int, err error) {
 	conn := DefaultConn()
 	defer conn.Close()
-	selector := generateSelector(filter)
+	selector := GenerateSelector(filter)
 	q := conn.C(dtype).Find(selector)
 	count, err = q.Count()
 	if err == nil {
@@ -141,7 +150,7 @@ func (mds *DataStorage) RetrieveWithCount(
 }
 
 //GetFilterValues - provides values associated the fields defined in filter spec
-func (mds *DataStorage) GetFilterValues(
+func (mds *dataStorage) GetFilterValues(
 	dtype string,
 	specs teak.FilterSpecList) (values teak.M, err error) {
 	conn := DefaultConn()
@@ -180,7 +189,7 @@ func (mds *DataStorage) GetFilterValues(
 }
 
 //GetFilterValuesX - get values for filter based on given filter
-func (mds *DataStorage) GetFilterValuesX(
+func (mds *dataStorage) GetFilterValuesX(
 	dtype string,
 	field string,
 	specs teak.FilterSpecList,
@@ -216,7 +225,7 @@ func (mds *DataStorage) GetFilterValuesX(
 	}
 	var selector bson.M
 	if filter != nil {
-		selector = generateSelector(filter)
+		selector = GenerateSelector(filter)
 	}
 	values = teak.M{}
 	err = conn.C(dtype).Pipe([]bson.M{
@@ -231,7 +240,7 @@ func (mds *DataStorage) GetFilterValuesX(
 }
 
 //GenerateSelector - creates mongodb query for a generic filter
-func generateSelector(
+func GenerateSelector(
 	filter *teak.Filter) (selector bson.M) {
 	queries := make([]bson.M, 0, 100)
 	// for key, values := range filter.Props {
@@ -304,28 +313,28 @@ func generateSelector(
 
 //Init - initialize the data storage - this needs to be run on each application
 //start up
-func (mds *DataStorage) Init() (err error) {
+func (mds *dataStorage) Init() (err error) {
 	return err
 }
 
 //Setup - setup has to be run when data storage structure changes, such as
 //adding index, altering tables etc
-func (mds *DataStorage) Setup(params teak.M) (err error) {
+func (mds *dataStorage) Setup(params teak.M) (err error) {
 	return err
 }
 
 //Reset - reset clears the data without affecting the structure/schema
-func (mds *DataStorage) Reset() (err error) {
+func (mds *dataStorage) Reset() (err error) {
 	return err
 }
 
 //Destroy - deletes data and also structure
-func (mds *DataStorage) Destroy() (err error) {
+func (mds *dataStorage) Destroy() (err error) {
 	return err
 }
 
 //Wrap - wraps a command with flags required to connect to this data source
-func (mds *DataStorage) Wrap(cmd *cli.Command) *cli.Command {
+func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
 	cmd.Flags = append(cmd.Flags, mongoFlags...)
 	if cmd.Before == nil {
 		cmd.Before = requireMongo
@@ -343,6 +352,6 @@ func (mds *DataStorage) Wrap(cmd *cli.Command) *cli.Command {
 }
 
 //GetManageCommands - commands that can be used to manage this data storage
-func (mds *DataStorage) GetManageCommands() (commands []cli.Command) {
+func (mds *dataStorage) GetManageCommands() (commands []cli.Command) {
 	return commands
 }
