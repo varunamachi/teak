@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/urfave/cli.v1"
 )
 
 //DumpJSON - dumps JSON representation of given data to stdout
@@ -86,4 +88,22 @@ func GetFirstValidStr(strs ...string) (str string) {
 		}
 	}
 	return str
+}
+
+//MergeEnpoints - merge endpoints from different arrays to single array
+func MergeEnpoints(epss ...[]*Endpoint) []*Endpoint {
+	out := make([]*Endpoint, 0, 100)
+	for _, eps := range epss {
+		out = append(out, eps...)
+	}
+	return out
+}
+
+//MergeCommands - merge commands from different arrays to single array
+func MergeCommands(cmdss ...[]*cli.Command) []*cli.Command {
+	out := make([]*cli.Command, 100)
+	for _, cmds := range cmdss {
+		out = append(out, cmds...)
+	}
+	return out
 }

@@ -9,6 +9,11 @@ import (
 
 var dataStorage DataStorage
 
+//GetStore - get the data store
+func GetStore() DataStorage {
+	return dataStorage
+}
+
 //Version - represents version of the application
 type Version struct {
 	Major int `json:"major"`

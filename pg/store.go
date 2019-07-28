@@ -110,8 +110,21 @@ func (mds *DataStorage) Destroy() (err error) {
 }
 
 //Wrap - wraps a command with flags required to connect to this data source
-func (mds *DataStorage) Wrap(cmd *cli.Command) (out *cli.Command) {
-	return out
+func (mds *DataStorage) Wrap(cmd *cli.Command) *cli.Command {
+	cmd.Flags = append(cmd.Flags, pgFlags...)
+	if cmd.Before == nil {
+		cmd.Before = requireMongo
+	} else {
+		otherBefore := cmd.Before
+		cmd.Before = func(ctx *cli.Context) (err error) {
+			err = requireMongo(ctx)
+			if err == nil {
+				err = otherBefore(ctx)
+			}
+			return err
+		}
+	}
+	return cmd
 }
 
 //GetManageCommands - commands that can be used to manage this data storage

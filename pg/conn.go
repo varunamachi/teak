@@ -33,6 +33,6 @@ func Connect(optStr string) (err error) {
 }
 
 //ConnectWithOpts - connect to postgresdb based on given options
-func ConnectWithOpts(opts ConnOpts) (err error) {
+func ConnectWithOpts(opts *ConnOpts) (err error) {
 	return Connect(opts.String())
 }

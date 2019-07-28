@@ -9,13 +9,6 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
-//App - the application itself
-type App struct {
-	cli.App
-	Modules    []*Module `json:"modules"`
-	NetOptions Options   `json:"netOptions"`
-}
-
 //ModuleConfigFunc Signature used by functions that are used to configure a
 //module. Some config callbacks include - initialize, setup, reset etc
 type ModuleConfigFunc func(app *App) (err error)
@@ -26,10 +19,18 @@ type Module struct {
 	Description  string              `json:"desc"`
 	Endpoints    []*Endpoint         `json:"endpoints"`
 	ItemHandlers []StoredItemHandler `json:"itemHandlers"`
-	Commands     []cli.Command
+	Commands     []*cli.Command
 	Initialize   ModuleConfigFunc
 	Setup        ModuleConfigFunc
 	Reset        ModuleConfigFunc
+}
+
+//App - the application itself
+type App struct {
+	cli.App
+	modules    []*Module
+	apiRoot    string
+	apiVersion string
 }
 
 //FromAppDir - gives a absolute path from a path relative to
@@ -44,12 +45,12 @@ func (app *App) FromAppDir(relPath string) (abs string) {
 
 //AddModule - registers a module with the app
 func (app *App) AddModule(module *Module) {
-	app.Modules = append(app.Modules, module)
+	app.modules = append(app.modules, module)
 }
 
 //Exec - runs the applications
 func (app *App) Exec(args []string) (err error) {
-	for _, module := range app.Modules {
+	for _, module := range app.modules {
 		if module.Initialize != nil {
 			err = module.Initialize(app)
 			if err != nil {
@@ -59,7 +60,9 @@ func (app *App) Exec(args []string) (err error) {
 			}
 		}
 		if module.Commands != nil {
-			app.Commands = append(app.Commands, module.Commands...)
+			for _, cmd := range module.Commands {
+				app.Commands = append(app.Commands, *cmd)
+			}
 		}
 		for _, fc := range module.ItemHandlers {
 			siHandlers[fc.DataType()] = fc
@@ -67,7 +70,7 @@ func (app *App) Exec(args []string) (err error) {
 		AddEndpoints(module.Endpoints...)
 	}
 	if err == nil {
-		InitServer(app.NetOptions)
+		InitServer(app.apiRoot, app.apiVersion)
 		err = app.Run(args)
 	}
 	return err
@@ -77,10 +80,15 @@ func (app *App) Exec(args []string) (err error) {
 func NewApp(
 	name string,
 	appVersion Version,
+	apiVersion string,
+	authtr Authenticator,
+	authzr Authorizer,
 	storage DataStorage,
 	desc string) (app *App) {
 
 	dataStorage = storage
+	authenticator = authtr
+	authorizer = authzr
 	if err := dataStorage.Init(); err != nil {
 		Fatal("t.app.dataStore", "Failed to initilize application store")
 	}
@@ -89,8 +97,8 @@ func NewApp(
 		LogConsole:  true,
 		FilterLevel: TraceLevel,
 	})
-
 	LoadConfig(name)
+
 	app = &App{
 		App: cli.App{
 			Name:     name,
@@ -105,60 +113,28 @@ func NewApp(
 			ErrWriter: ioutil.Discard,
 			Metadata:  map[string]interface{}{},
 		},
-		NetOptions: Options{
-			RootName:      "",
-			APIVersion:    "v0", //TODO - Whoever registers should tell
-			Authenticator: dummyAuthenticator,
-			Authorizer:    nil,
-		},
-		Modules: make([]*Module, 0, 10),
+		apiRoot:    "",
+		apiVersion: "v0", //TODO - Whoever registers should tell
+		modules:    make([]*Module, 0, 10),
 	}
-	app.Metadata["vapp"] = app
+	app.Metadata["teak"] = app
+	app.modules = append(app.modules, &Module{
+		Name:        "Core",
+		Description: "teak Core module",
+		Endpoints: MergeEnpoints(
+			getUserManagementEndpoints(),
+			getDataEndpoints(),
+			getAdminEndpoints(),
+		),
+		Commands: MergeCommands(
+			getAdminCommands(),
+		),
+		ItemHandlers: []StoredItemHandler{
+			&UserHandler{},
+		},
+	})
 	return app
 }
-
-//NewSimpleApp - an app that is not a service and does not use mongodb
-// func NewSimpleApp(
-// 	name string,
-// 	appVersion Version,
-// 	apiVersion string,
-// 	authors []cli.Author,
-// 	requiresMongo bool,
-// 	desc string) (app *App) {
-// 	InitLogger(LoggerConfig{
-// 		Logger:      NewDirectLogger(),
-// 		LogConsole:  true,
-// 		FilterLevel: TraceLevel,
-// 	})
-// 	//@TODO take these decisions in data store impl
-// 	// var store vsec.UserStorage
-// 	// var auditor vevt.EventAuditor
-// 	// store = &vuman.MongoStorage{}
-// 	// auditor = &vevt.MongoAuditor{}
-// 	// if !requiresMongo {
-// 	// 	store = &vuman.PGStorage{}
-// 	// 	auditor = &vevt.PGAuditor{}
-// 	// }
-// 	// vuman.SetStorageStrategy(store)
-// 	// vevt.SetEventAuditor(auditor)
-// 	LoadConfig(name)
-// 	app = &App{
-// 		IsService:     false,
-// 		RequiresMongo: requiresMongo,
-// 		App: cli.App{
-// 			Name:      name,
-// 			Commands:  make([]cli.Command, 0, 100),
-// 			Version:   appVersion.String(),
-// 			Authors:   authors,
-// 			Usage:     desc,
-// 			ErrWriter: ioutil.Discard,
-// 			Metadata:  map[string]interface{}{},
-// 		},
-// 		Modules: make([]*Module, 0, 10),
-// 	}
-// 	app.Metadata["vapp"] = app
-// 	return app
-// }
 
 //Setup - sets up the application and the registered module. This is not
 //initialization and needs to be called when app/module configuration changes.
@@ -171,7 +147,7 @@ func (app *App) Setup() (err error) {
 	}
 	Info("t.app.setup", "Data storage setup succesful")
 
-	for _, module := range app.Modules {
+	for _, module := range app.modules {
 		if module.Setup != nil {
 			err = module.Setup(app)
 			if err != nil {
@@ -196,7 +172,7 @@ func (app *App) Reset() (err error) {
 		LogErrorX("t.app.reset", "Failed to reset app", err)
 		return err
 	}
-	for _, module := range app.Modules {
+	for _, module := range app.modules {
 		if module.Reset != nil {
 			err = module.Reset(app)
 			if err != nil {

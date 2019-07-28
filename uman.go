@@ -1,4 +1,4 @@
-package teak 
+package teak
 
 import (
 	"errors"
@@ -146,7 +146,7 @@ func updateUserInfo(user *User) (err error) {
 		user.ID = Hash(user.ID)
 	}
 	user.VerID = uuid.NewV4().String()
-	user.Created = time.Now()
+	user.CreatedAt = time.Now()
 	user.State = Disabled
 	user.FullName = user.FirstName + " " + user.LastName
 	// @TODO create a key retrieving strategy -- local | remote etc
@@ -487,4 +487,42 @@ func updateProfile(ctx echo.Context) (err error) {
 		Err:    ErrString(err),
 	})
 	return LogError("Sec:Hdl", err)
+}
+
+//UserHandler - CRUD support for User data type
+type UserHandler struct{}
+
+//DataType - type of data for which this handler is written
+func (uh *UserHandler) DataType() string {
+	return "teakUser"
+}
+
+//UniqueKeyField - gives the field which uniquely identifies the user
+func (uh *UserHandler) UniqueKeyField() string {
+	return "ID"
+}
+
+//GetKey - get the uniquely identifying key for the given item
+func (uh *UserHandler) GetKey(item interface{}) interface{} {
+	if user, ok := item.(User); ok {
+		return user.ID
+	}
+	return ""
+}
+
+//SetModInfo - set the modifincation information for the data
+func (uh *UserHandler) SetModInfo(item interface{}, at time.Time, by string) {
+	if user, ok := item.(User); ok {
+		user.ModifiedAt = at
+		user.ModifiedBy = by
+	}
+}
+
+//CreateInstance - create instance of the data type for which the handler is
+//written
+func (uh *UserHandler) CreateInstance(by string) interface{} {
+	return &User{
+		CreatedAt: time.Now(),
+		CreatedBy: by,
+	}
 }

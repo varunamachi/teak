@@ -12,6 +12,7 @@ import (
 	echo "github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	uuid "github.com/satori/go.uuid"
+	"gopkg.in/urfave/cli.v1"
 )
 
 //Network
@@ -44,20 +45,18 @@ type Result struct {
 }
 
 //Options - options for initializing web APIs
-type Options struct {
-	RootName      string
-	APIVersion    string
-	Authenticator Authenticator
-	Authorizer    Authorizer
-}
+// type Options struct {
+// 	RootName      string
+// 	APIVersion    string
+// 	Authenticator Authenticator
+// 	Authorizer    Authorizer
+// }
 
 //GetJWTKey - gives a unique JWT key
 func GetJWTKey() []byte {
 	if len(jwtKey) == 0 {
 		jwtKey, _ = uuid.NewV4().MarshalBinary()
 	}
-	//@TODO - remove later - Just for test
-	// jwtKey = []byte("sdhfjsdfhdskjghdfkjhgdf")
 	return jwtKey
 }
 
@@ -282,19 +281,16 @@ func ModifiedHTTPErrorHandler(err error, c echo.Context) {
 }
 
 //InitServer - initializes all the registered endpoints
-func InitServer(opts Options) {
+func InitServer(rootName string, apiVersion string) {
 	e.HideBanner = true
 	e.HTTPErrorHandler = ModifiedHTTPErrorHandler
 	e.Use(middleware.Recover())
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 		Format: "[ACCSS] [Net:HTTP] ${status} : ${method} => ${path}\n",
 	}))
-	//Add middleware
-	authenticator = opts.Authenticator
-	authorizer = opts.Authorizer
 
 	//rootPath is a package variable
-	rootPath = opts.RootName + "/api/v" + opts.APIVersion + "/"
+	rootPath = rootName + "/api/v" + apiVersion + "/"
 	accessPos = len(rootPath) + len("in/")
 	root := e.Group(rootPath)
 	in := root.Group("in/")
@@ -521,4 +517,30 @@ func GetQueryParam(ctx echo.Context, name string, def string) (val string) {
 		val = def
 	}
 	return val
+}
+
+//GetServiceStartCmd - creates a command to service start, if serveFunc is
+//not nil then that function is invoked at the end of command, otherwise
+//default serve is used
+func GetServiceStartCmd(serveFunc func(port int) error) *cli.Command {
+	return &cli.Command{
+		Name:  "serve",
+		Usage: "Starts the HTTP service",
+		Flags: []cli.Flag{
+			cli.IntFlag{
+				Name:  "port",
+				Value: 8000,
+				Usage: "Port at which the service needs to serve",
+			},
+		},
+		Action: func(ctx *cli.Context) (err error) {
+			ag := NewArgGetter(ctx)
+			port := ag.GetRequiredInt("port")
+			if err = ag.Err; err == nil {
+				err = Serve(port)
+			}
+			return err
+		},
+		Subcommands: []cli.Command{},
+	}
 }
