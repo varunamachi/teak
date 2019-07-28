@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/varunamachi/teak"
-	"github.com/varunamachi/vaali/vcmn"
-	"github.com/varunamachi/vaali/vmgo"
 	"gopkg.in/hlandau/passlib.v1"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -18,7 +16,7 @@ func getUserIDPassword(params map[string]interface{}) (
 	userID, aok = params["userID"].(string)
 	//UserID is the SHA1 hash of the userID provided
 	if aok {
-		userID = vcmn.Hash(userID)
+		userID = teak.Hash(userID)
 	}
 	password, bok = params["password"].(string)
 	if !aok || !bok {
@@ -80,11 +78,11 @@ func (m *userStorage) GetUser(userID string) (user *teak.User, err error) {
 }
 
 //GetUsers - gets all users based on offset, limit and filter
-func (m *userStorage) GetUsers(offset, limit int, filter *vcmn.Filter) (
+func (m *userStorage) GetUsers(offset, limit int, filter *teak.Filter) (
 	users []*teak.User, err error) {
 	conn := DefaultConn()
 	defer conn.Close()
-	selector := vmgo.GenerateSelector(filter)
+	selector := GenerateSelector(filter)
 	users = make([]*teak.User, 0, limit)
 	err = conn.C("users").
 		Find(selector).
@@ -96,10 +94,10 @@ func (m *userStorage) GetUsers(offset, limit int, filter *vcmn.Filter) (
 }
 
 //GetCount - gives the number of user selected by given filter
-func (m *userStorage) GetCount(filter *vcmn.Filter) (count int, err error) {
+func (m *userStorage) GetCount(filter *teak.Filter) (count int, err error) {
 	conn := DefaultConn()
 	defer conn.Close()
-	selector := vmgo.GenerateSelector(filter)
+	selector := GenerateSelector(filter)
 	count, err = conn.C("users").Find(selector).Count()
 	return count, teak.LogError("t.user.mongo", err)
 }
@@ -121,12 +119,12 @@ func (m *userStorage) GetCount(filter *vcmn.Filter) (count int, err error) {
 
 //GetUsersWithCount - Get users with total count
 func (m *userStorage) GetUsersWithCount(
-	offset, limit int, filter *vcmn.Filter) (
+	offset, limit int, filter *teak.Filter) (
 	total int, users []*teak.User, err error) {
 	conn := DefaultConn()
 	defer conn.Close()
 	var selector bson.M
-	selector = vmgo.GenerateSelector(filter)
+	selector = GenerateSelector(filter)
 	users = make([]*teak.User, 0, limit)
 	q := conn.C("users").Find(selector).Sort("-created")
 	total, err = q.Count()
