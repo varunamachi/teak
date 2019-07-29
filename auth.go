@@ -180,7 +180,9 @@ func dummyAuthorizer(userID string) (role AuthLevel, err error) {
 	return role, err
 }
 
-func getUserIDPassword(params map[string]interface{}) (
+//GetUserIDPassword - gets userID and password from parameter app, if not
+//available a error is returned
+func GetUserIDPassword(params map[string]interface{}) (
 	userID string, password string, err error) {
 	var aok, bok bool
 	userID, aok = params["userID"].(string)

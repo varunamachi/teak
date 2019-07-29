@@ -10,38 +10,13 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func getUserIDPassword(params map[string]interface{}) (
-	userID string, password string, err error) {
-	var aok, bok bool
-	userID, aok = params["userID"].(string)
-	//UserID is the SHA1 hash of the userID provided
-	if aok {
-		userID = teak.Hash(userID)
-	}
-	password, bok = params["password"].(string)
-	if !aok || !bok {
-		err = errors.New("Authorization, Invalid credentials provided")
-	}
-	return userID, password, err
-}
-
-//Authenticator - authenticator that uses user information stored in
-//mongo DB to authenticate userID and password given
-func Authenticator(params map[string]interface{}) (
-	user *teak.User, err error) {
-	var userID, password string
-	userID, password, err = getUserIDPassword(params)
-	if err == nil {
-		err = teak.GetUserStorage().ValidateUser(userID, password)
-		if err == nil {
-			user, err = teak.GetUserStorage().GetUser(userID)
-		}
-	}
-	return user, teak.LogError("t.auth.mongo", err)
-}
-
 //userStorage - mongodb storage for user information
 type userStorage struct{}
+
+//NewUserStorage - creates a new user storage based on mongodb
+func NewUserStorage() teak.UserStorage {
+	return &userStorage{}
+}
 
 //CreateUser - creates user in database
 func (m *userStorage) CreateUser(user *teak.User) (err error) {
@@ -324,17 +299,19 @@ func (m *userStorage) CleanData() (err error) {
 func (m *userStorage) UpdateProfile(user *teak.User) (err error) {
 	conn := DefaultConn()
 	defer conn.Close()
+	user.FullName = user.FirstName + " " + user.LastName
 	err = conn.C("users").Update(
 		bson.M{
 			"id": user.ID,
 		}, bson.M{
 			"$set": bson.M{
-				"email":     user.Email,
-				"firstName": user.FirstName,
-				"lastName":  user.LastName,
-				"title":     user.Title,
-				"fullName":  user.FirstName + " " + user.LastName,
-				"modified":  time.Now(),
+				"email":      user.Email,
+				"firstName":  user.FirstName,
+				"lastName":   user.LastName,
+				"title":      user.Title,
+				"fullName":   user.FullName,
+				"modifiedAt": time.Now(),
+				"modifiedBy": user.FullName,
 			},
 		},
 	)

@@ -2,5 +2,7 @@ package main
 
 func main() {
 	// store := mongo.NewStorage()
-	// authtr := mongo.Authenticator
+	// userStorage := mongo.NewUserStorage()
+	// authtr := teak.DefaultAuthenticator
+
 }

@@ -116,6 +116,21 @@ func SendVerificationMail(user *User) (err error) {
 	return LogError("UMan:Auth", err)
 }
 
+//DefaultAuthenticator - authenticator that uses applications UserStorage to
+//authenticate a user
+func DefaultAuthenticator(params map[string]interface{}) (
+	user *User, err error) {
+	var userID, password string
+	userID, password, err = GetUserIDPassword(params)
+	if err == nil {
+		err = GetUserStorage().ValidateUser(userID, password)
+		if err == nil {
+			user, err = GetUserStorage().GetUser(userID)
+		}
+	}
+	return user, LogError("t.auth.default", err)
+}
+
 func getVerificationLink(user *User) (link string) {
 	name := user.FirstName + " " + user.LastName
 	if name == "" {
