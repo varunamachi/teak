@@ -5,6 +5,24 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
+//NewDefaultApp - creates a new app with MongoDB based storage providers
+func NewDefaultApp(
+	name string,
+	appVersion teak.Version,
+	apiVersion string,
+	desc string) *teak.App {
+	return teak.NewApp(
+		name,
+		appVersion,
+		apiVersion,
+		desc,
+		teak.DefaultAuthenticator,
+		nil,
+		NewUserStorage(),
+		NewStorage(),
+	)
+}
+
 //pgFlags - flags to get postgres connection options
 var pgFlags = []cli.Flag{
 	cli.StringFlag{

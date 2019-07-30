@@ -101,7 +101,7 @@ func MergeEnpoints(epss ...[]*Endpoint) []*Endpoint {
 
 //MergeCommands - merge commands from different arrays to single array
 func MergeCommands(cmdss ...[]*cli.Command) []*cli.Command {
-	out := make([]*cli.Command, 100)
+	out := make([]*cli.Command, 0, 100)
 	for _, cmds := range cmdss {
 		out = append(out, cmds...)
 	}

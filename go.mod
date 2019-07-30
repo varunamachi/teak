@@ -15,7 +15,6 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2
 	github.com/satori/go.uuid v1.2.0
 	github.com/shirou/gopsutil v2.18.12+incompatible // indirect
-	github.com/varunamachi/vaali v0.0.0-20190714152216-91b40d83faa0
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/hlandau/easymetric.v1 v1.0.0 // indirect

@@ -23,7 +23,7 @@ type store struct {
 }
 
 var mongoStore *store
-var defaultDB = "vaali"
+var defaultDB = "teak"
 
 //Conn - represents a mongdb connection
 type Conn struct {

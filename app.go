@@ -81,14 +81,16 @@ func NewApp(
 	name string,
 	appVersion Version,
 	apiVersion string,
+	desc string,
 	authtr Authenticator,
 	authzr Authorizer,
-	storage DataStorage,
-	desc string) (app *App) {
+	uStorage UserStorage,
+	genStorage DataStorage) (app *App) {
 
-	dataStorage = storage
+	dataStorage = genStorage
 	authenticator = authtr
 	authorizer = authzr
+	userStorage = uStorage
 	if err := dataStorage.Init(); err != nil {
 		Fatal("t.app.dataStore", "Failed to initilize application store")
 	}
@@ -132,6 +134,15 @@ func NewApp(
 		ItemHandlers: []StoredItemHandler{
 			&UserHandler{},
 		},
+		Initialize: func(app *App) error {
+			return dataStorage.Init()
+		},
+		Setup: func(app *App) error {
+			return dataStorage.Setup(nil)
+		},
+		Reset: func(app *App) error {
+			return dataStorage.Reset()
+		},
 	})
 	return app
 }
@@ -140,7 +151,6 @@ func NewApp(
 //initialization and needs to be called when app/module configuration changes.
 //This is the place where mongoDB indices are expected to be created.
 func (app *App) Setup() (err error) {
-	err = dataStorage.Setup(nil)
 	if err != nil {
 		LogErrorX("t.app.setup", "Failed to setup data storage", err)
 		return err
@@ -167,7 +177,6 @@ func (app *App) Setup() (err error) {
 //Reset - resets the application and module configuration and data.
 //USE WITH CAUTION
 func (app *App) Reset() (err error) {
-	err = dataStorage.Reset()
 	if err != nil {
 		LogErrorX("t.app.reset", "Failed to reset app", err)
 		return err
@@ -187,9 +196,4 @@ func (app *App) Reset() (err error) {
 		Info("t.app.setup", "Application reset complete")
 	}
 	return err
-}
-
-//NewAppWithOptions - creates app with non default options
-func NewAppWithOptions( /*****/ ) (app *App) {
-	return app
 }

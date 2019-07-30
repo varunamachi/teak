@@ -200,7 +200,7 @@ func (client *Client) CreateURL(
 	return str
 }
 
-//Login - login to a vaali based service with userID and password. If successful
+//Login - login to a teak based service with userID and password. If successful
 //client will have the session information and can perform REST calls that needs
 //authentication
 func (client *Client) Login(userID, password string) (err error) {

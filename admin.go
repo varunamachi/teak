@@ -7,8 +7,6 @@ import (
 	"time"
 
 	echo "github.com/labstack/echo/v4"
-	"github.com/varunamachi/vaali/vcmn"
-	"github.com/varunamachi/vaali/vnet"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -349,10 +347,10 @@ func testEMail() *cli.Command {
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
-			ag := vcmn.NewArgGetter(ctx)
+			ag := NewArgGetter(ctx)
 			to := ag.GetRequiredString("to")
 			if err = ag.Err; err == nil {
-				err = vnet.SendEmail(to, "test", "hello!")
+				err = SendEmail(to, "test", "hello!")
 			}
 			return err
 		},
