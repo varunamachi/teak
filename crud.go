@@ -102,13 +102,10 @@ type StoredItemHandler interface {
 	GetKey(item interface{}) interface{}
 	SetModInfo(item interface{}, at time.Time, by string)
 	CreateInstance(by string) interface{}
+	PropNames() []string
 }
 
 var siHandlers = make(map[string]StoredItemHandler)
-
-//FactoryFunc - Function for creating an instance of data type
-// type FactoryFunc func() StoredItem
-// var factories = make(map[string]FactoryFunc)
 
 //defaultSM - default status and message
 func defaultSM(opern, name string) (int, string) {

@@ -547,3 +547,7 @@ func (uh *UserHandler) CreateInstance(by string) interface{} {
 		CreatedBy: by,
 	}
 }
+
+func (uh *UserHandler) PropNames() []string {
+	return []string{}
+}

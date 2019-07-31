@@ -2,9 +2,14 @@ package pg
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/jmoiron/sqlx"
+	"github.com/jmoiron/sqlx/reflectx"
 	"github.com/varunamachi/teak"
 )
+
+var db *sqlx.DB
 
 //ConnOpts - postgres connection options
 type ConnOpts struct {
@@ -29,10 +34,17 @@ func (c *ConnOpts) String() string {
 //Connect - connect to postgres db with given connection string
 func Connect(optStr string) (err error) {
 	defer teak.LogErrorX("t.pg", "Failed to connect to postgres", err)
+	db, err = sqlx.Open("postgres", optStr)
+	db.Mapper = reflectx.NewMapperFunc("json", strings.ToLower)
 	return err
 }
 
 //ConnectWithOpts - connect to postgresdb based on given options
 func ConnectWithOpts(opts *ConnOpts) (err error) {
 	return Connect(opts.String())
+}
+
+//Conn - gives connection to database
+func Conn() *sqlx.DB {
+	return db
 }
