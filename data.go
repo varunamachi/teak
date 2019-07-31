@@ -216,16 +216,6 @@ type DataStorage interface {
 }
 
 //@TODO Data store ini shall do these
-// var store vsec.UserStorage
-// var auditor vevt.EventAuditor
-// store = &vuman.MongoStorage{}
-// auditor = &vevt.MongoAuditor{}
-// authr := vuman.MongoAuthenticator
-// if !requiresMongo {
-// 	store = &vuman.PGStorage{}
-// 	auditor = &vevt.PGAuditor{}
-// }
-// vuman.SetStorageStrategy(store)
 // vevt.SetEventAuditor(auditor)
 
 //VisitorFunc - function that will be called on each value of reflected type

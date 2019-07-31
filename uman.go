@@ -548,6 +548,7 @@ func (uh *UserHandler) CreateInstance(by string) interface{} {
 	}
 }
 
+//PropNames - get prop names of Users
 func (uh *UserHandler) PropNames() []string {
 	return []string{}
 }
