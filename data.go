@@ -3,6 +3,7 @@ package teak
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 
 	"gopkg.in/urfave/cli.v1"
@@ -227,77 +228,73 @@ type DataStorage interface {
 // vuman.SetStorageStrategy(store)
 // vevt.SetEventAuditor(auditor)
 
-type VisitorFunc func(reflect.Type, reflect.Value)
+//VisitorFunc - function that will be called on each value of reflected type
+type VisitorFunc func(
+	path string,
+	parent *reflect.Value,
+	value *reflect.Value)
 
-// func Traverse(obj interface{}, visitor VisitorFunc) {
-// 	// Wrap the original in a reflect.Value
-// 	original := reflect.ValueOf(obj)
+//Traverse - traverse a given instance of struct/slice/map/basic type
+func Traverse(obj interface{}, visitor VisitorFunc) {
+	// Wrap the original in a reflect.Value
+	original := reflect.ValueOf(obj)
 
-// 	translateRecursive(original, visitor)
-// }
+	traverseRecursive("", nil, &original, visitor)
+}
 
-// func translateRecursive(original reflect.Value, visitor VisitorFunc) {
-// 	switch original.Kind() {
-// 	// The first cases handle nested structures and translate them recursively
+func traverseRecursive(
+	path string,
+	parent *reflect.Value,
+	original *reflect.Value,
+	visitor VisitorFunc) {
+	visitor(path, parent, original)
+	switch original.Kind() {
+	case reflect.Ptr:
+		originalValue := original.Elem()
+		if !originalValue.IsValid() {
+			return
+		}
+		traverseRecursive(path, original, &originalValue, visitor)
 
-// 	// If it is a pointer we need to unwrap and call once again
-// 	case reflect.Ptr:
-// 		// To get the actual value of the original we have to call Elem()
-// 		// At the same time this unwraps the pointer so we don't end up in
-// 		// an infinite recursion
-// 		originalValue := original.Elem()
-// 		// Check if the pointer is nil
-// 		if !originalValue.IsValid() {
-// 			return
-// 		}
-// 		visitor(originalValue.Type(), originalValue)
-// 		// Unwrap the newly created pointer
-// 		translateRecursive(originalValue, visitor)
+	case reflect.Interface:
+		originalValue := original.Elem()
+		traverseRecursive(path, original, &originalValue, visitor)
 
-// 	// If it is an interface (which is very similar to a pointer), do basically the
-// 	// same as for the pointer. Though a pointer is not the same as an interface so
-// 	// note that we have to call Elem() after creating a new object because otherwise
-// 	// we would end up with an actual pointer
-// 	case reflect.Interface:
-// 		// Get rid of the wrapping interface
-// 		originalValue := original.Elem()
-// 		visitor()
-// 		translateRecursive(copyValue, originalValue)
+	case reflect.Struct:
+		//TODO: Do we need to call visitor for struct?
+		for i := 0; i < original.NumField(); i++ {
+			field := original.Field(i)
+			traverseRecursive(
+				path+"/"+original.Type().Field(i).Name,
+				original,
+				&field,
+				visitor)
+		}
 
-// 	// If it is a struct we translate each field
-// 	case reflect.Struct:
-// 		for i := 0; i < original.NumField(); i += 1 {
-// 			translateRecursive(copy.Field(i), original.Field(i))
-// 		}
+	// If it is a slice we create a new slice and translate each element
+	case reflect.Slice:
+		for i := 0; i < original.Len(); i++ {
+			value := original.Index(i)
+			traverseRecursive(
+				path+"/"+strconv.Itoa(i),
+				original,
+				&value,
+				visitor)
+		}
 
-// 	// If it is a slice we create a new slice and translate each element
-// 	case reflect.Slice:
-// 		copy.Set(reflect.MakeSlice(original.Type(), original.Len(), original.Cap()))
-// 		for i := 0; i < original.Len(); i += 1 {
-// 			translateRecursive(copy.Index(i), original.Index(i))
-// 		}
+	// If it is a map we create a new map and translate each value
+	case reflect.Map:
+		for _, key := range original.MapKeys() {
+			originalValue := original.MapIndex(key)
+			traverseRecursive(
+				path+"/"+key.String(), //Lets assume key has a valid string rep
+				original,
+				&originalValue,
+				visitor)
+		}
+	// And everything else will simply be taken from the original
+	default:
 
-// 	// If it is a map we create a new map and translate each value
-// 	case reflect.Map:
-// 		copy.Set(reflect.MakeMap(original.Type()))
-// 		for _, key := range original.MapKeys() {
-// 			originalValue := original.MapIndex(key)
-// 			// New gives us a pointer, but again we want the value
-// 			copyValue := reflect.New(originalValue.Type()).Elem()
-// 			translateRecursive(copyValue, originalValue)
-// 			copy.SetMapIndex(key, copyValue)
-// 		}
+	}
 
-// 	// Otherwise we cannot traverse anywhere so this finishes the the recursion
-
-// 	// If it is a string translate it (yay finally we're doing what we came for)
-// 	case reflect.String:
-// 		translatedString := dict[original.Interface().(string)]
-// 		copy.SetString(translatedString)
-
-// 	// And everything else will simply be taken from the original
-// 	default:
-// 		copy.Set(original)
-// 	}
-
-// }
+}
