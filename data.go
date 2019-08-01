@@ -223,28 +223,34 @@ type DataStorage interface {
 //branch
 type VisitorFunc func(
 	path string,
+	tag reflect.StructTag,
 	parent *reflect.Value,
 	value *reflect.Value) (cont bool)
 
-//Traverse - traverse a given instance of struct/slice/map/basic type
-func Traverse(
+type WalkConfig struct {
+	MaxDepth             int
+	Visitor              VisitorFunc
+	VisitContainerParent bool
+}
+
+//Walk - walk a given instance of struct/slice/map/basic type
+func Walk(
 	obj interface{},
-	maxDepth int,
-	visitor VisitorFunc) {
+	config *WalkConfig) {
 	// Wrap the original in a reflect.Value
 	original := reflect.ValueOf(obj)
 
-	traverseRecursive(0, maxDepth, "", nil, &original, visitor)
+	walkRecursive(config, 0, "", "", nil, &original)
 }
 
-func traverseRecursive(
+func walkRecursive(
+	config *WalkConfig,
 	depth int,
-	maxDept int,
+	tag reflect.StructTag,
 	path string,
 	parent *reflect.Value,
-	original *reflect.Value,
-	visitor VisitorFunc) {
-	if maxDept > 0 && depth == maxDept+1 {
+	original *reflect.Value) {
+	if config.MaxDepth > 0 && depth == config.MaxDepth+1 {
 		return
 	}
 	depth++
@@ -254,69 +260,78 @@ func traverseRecursive(
 		if !originalValue.IsValid() {
 			return
 		}
-		traverseRecursive(
+		walkRecursive(
+			config,
 			depth,
-			maxDept,
+			"",
 			path,
 			original,
-			&originalValue,
-			visitor)
+			&originalValue)
 
 	case reflect.Interface:
 		originalValue := original.Elem()
-		traverseRecursive(
+		walkRecursive(
+			config,
 			depth,
-			maxDept,
+			"",
 			path,
 			original,
-			&originalValue,
-			visitor)
+			&originalValue)
 
 	case reflect.Struct:
-		if cont := visitor(path, parent, original); !cont {
+		if !config.Visitor(path, "", parent, original) {
 			return
 		}
 		for i := 0; i < original.NumField(); i++ {
 			field := original.Field(i)
-			traverseRecursive(
+			structField := original.Type().Field(i)
+			fieldPath := structField.Name
+			if path != "" {
+				fieldPath = path + "." + structField.Name
+			}
+			walkRecursive(
+				config,
 				depth,
-				maxDept,
-				path+"/"+original.Type().Field(i).Name,
+				structField.Tag,
+				fieldPath,
 				original,
-				&field,
-				visitor)
+				&field)
 		}
 	case reflect.Slice:
-		if cont := visitor(path, parent, original); !cont {
+		if config.VisitContainerParent &&
+			!config.Visitor(path, "", parent, original) {
 			return
 		}
 		for i := 0; i < original.Len(); i++ {
+			itemPath := path + "[" + strconv.Itoa(i) + "]"
 			value := original.Index(i)
-			traverseRecursive(
+			walkRecursive(
+				config,
 				depth,
-				maxDept,
-				path+"/"+strconv.Itoa(i),
+				"",
+				itemPath,
 				original,
-				&value,
-				visitor)
+				&value)
 		}
 	case reflect.Map:
-		if cont := visitor(path, parent, original); !cont {
+		if config.VisitContainerParent &&
+			!config.Visitor(path, "", parent, original) {
 			return
 		}
 		for _, key := range original.MapKeys() {
 			originalValue := original.MapIndex(key)
-			traverseRecursive(
+			itemPath := path + "[" + key.String() + "]"
+			walkRecursive(
+				config,
 				depth,
-				maxDept,
-				path+"/"+key.String(), //Lets assume key has a valid string rep
+				"",
+				itemPath,
 				original,
-				&originalValue,
-				visitor)
+				&originalValue)
 		}
 	// And everything else will simply be taken from the original
 	default:
-		if cont := visitor(path, parent, original); !cont {
+		if cont := config.Visitor(path, tag, parent, original); !cont {
 			return
 		}
 

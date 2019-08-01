@@ -537,7 +537,7 @@ func GetServiceStartCmd(serveFunc func(port int) error) *cli.Command {
 			ag := NewArgGetter(ctx)
 			port := ag.GetRequiredInt("port")
 			if err = ag.Err; err == nil {
-				err = Serve(port)
+				err = serveFunc(port)
 			}
 			return err
 		},
