@@ -218,65 +218,97 @@ type DataStorage interface {
 //@TODO Data store ini shall do these
 // vevt.SetEventAuditor(auditor)
 
-//VisitorFunc - function that will be called on each value of reflected type
+//VisitorFunc - function that will be called on each value of reflected type.
+//The return value decides whether to continue with depth search in current
+//branch
 type VisitorFunc func(
 	path string,
 	parent *reflect.Value,
-	value *reflect.Value)
+	value *reflect.Value) (cont bool)
 
 //Traverse - traverse a given instance of struct/slice/map/basic type
-func Traverse(obj interface{}, visitor VisitorFunc) {
+func Traverse(
+	obj interface{},
+	maxDepth int,
+	visitor VisitorFunc) {
 	// Wrap the original in a reflect.Value
 	original := reflect.ValueOf(obj)
 
-	traverseRecursive("", nil, &original, visitor)
+	traverseRecursive(0, maxDepth, "", nil, &original, visitor)
 }
 
 func traverseRecursive(
+	depth int,
+	maxDept int,
 	path string,
 	parent *reflect.Value,
 	original *reflect.Value,
 	visitor VisitorFunc) {
-	visitor(path, parent, original)
+	if maxDept > 0 && depth == maxDept+1 {
+		return
+	}
+	depth++
 	switch original.Kind() {
 	case reflect.Ptr:
 		originalValue := original.Elem()
 		if !originalValue.IsValid() {
 			return
 		}
-		traverseRecursive(path, original, &originalValue, visitor)
+		traverseRecursive(
+			depth,
+			maxDept,
+			path,
+			original,
+			&originalValue,
+			visitor)
 
 	case reflect.Interface:
 		originalValue := original.Elem()
-		traverseRecursive(path, original, &originalValue, visitor)
+		traverseRecursive(
+			depth,
+			maxDept,
+			path,
+			original,
+			&originalValue,
+			visitor)
 
 	case reflect.Struct:
-		//TODO: Do we need to call visitor for struct?
+		if cont := visitor(path, parent, original); !cont {
+			return
+		}
 		for i := 0; i < original.NumField(); i++ {
 			field := original.Field(i)
 			traverseRecursive(
+				depth,
+				maxDept,
 				path+"/"+original.Type().Field(i).Name,
 				original,
 				&field,
 				visitor)
 		}
-
-	// If it is a slice we create a new slice and translate each element
 	case reflect.Slice:
+		if cont := visitor(path, parent, original); !cont {
+			return
+		}
 		for i := 0; i < original.Len(); i++ {
 			value := original.Index(i)
 			traverseRecursive(
+				depth,
+				maxDept,
 				path+"/"+strconv.Itoa(i),
 				original,
 				&value,
 				visitor)
 		}
-
-	// If it is a map we create a new map and translate each value
 	case reflect.Map:
+		if cont := visitor(path, parent, original); !cont {
+			return
+		}
 		for _, key := range original.MapKeys() {
 			originalValue := original.MapIndex(key)
 			traverseRecursive(
+				depth,
+				maxDept,
 				path+"/"+key.String(), //Lets assume key has a valid string rep
 				original,
 				&originalValue,
@@ -284,6 +316,9 @@ func traverseRecursive(
 		}
 	// And everything else will simply be taken from the original
 	default:
+		if cont := visitor(path, parent, original); !cont {
+			return
+		}
 
 	}
 

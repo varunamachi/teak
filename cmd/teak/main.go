@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/varunamachi/teak"
 )
@@ -20,10 +21,17 @@ func main() {
 	// )
 	// app.Exec(os.Args)
 
-	teak.Traverse(&teak.User{}, func(
+	teak.Traverse(&teak.User{}, 2, func(
 		path string,
 		parent *reflect.Value,
-		value *reflect.Value) {
+		value *reflect.Value) bool {
 		fmt.Println(path, value.String(), value.Kind())
+		if value.Type() == reflect.TypeOf(time.Time{}) {
+			fmt.Println("Found time")
+			return false
+		}
+		if parent.Kind() == reflect.Struct {
+		}
+		return true
 	})
 }
