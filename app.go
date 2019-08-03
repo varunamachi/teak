@@ -30,7 +30,7 @@ type App struct {
 	cli.App
 	modules    []*Module
 	apiRoot    string
-	apiVersion string
+	apiVersion int
 }
 
 //FromAppDir - gives a absolute path from a path relative to
@@ -80,7 +80,7 @@ func (app *App) Exec(args []string) (err error) {
 func NewApp(
 	name string,
 	appVersion Version,
-	apiVersion string,
+	apiVersion int,
 	desc string,
 	authtr Authenticator,
 	authzr Authorizer,
@@ -116,7 +116,7 @@ func NewApp(
 			Metadata:  map[string]interface{}{},
 		},
 		apiRoot:    "",
-		apiVersion: "v0", //TODO - Whoever registers should tell
+		apiVersion: apiVersion,
 		modules:    make([]*Module, 0, 10),
 	}
 	app.Metadata["teak"] = app

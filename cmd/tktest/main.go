@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "github.com/lib/pq"
 	"github.com/varunamachi/teak"
 	"github.com/varunamachi/teak/pg"
 )

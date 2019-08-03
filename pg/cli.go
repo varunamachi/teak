@@ -9,7 +9,7 @@ import (
 func NewDefaultApp(
 	name string,
 	appVersion teak.Version,
-	apiVersion string,
+	apiVersion int,
 	desc string) *teak.App {
 	return teak.NewApp(
 		name,
@@ -58,7 +58,7 @@ var pgFlags = []cli.Flag{
 }
 
 func requirePostgres(ctx *cli.Context) (err error) {
-	defer teak.LogErrorX("t.pg", "Failed to initialize mongoDB", err)
+	defer teak.LogErrorX("t.pg", "Failed to initialize postgres", err)
 	ag := teak.NewArgGetter(ctx)
 	var opts ConnOpts
 	if !teak.GetConfig("postgres.opts", &opts) {
@@ -67,10 +67,6 @@ func requirePostgres(ctx *cli.Context) (err error) {
 		opts.User = ag.GetRequiredString("pg-user")
 		opts.DBName = ag.GetRequiredString("pg-user")
 		opts.Password = ag.GetRequiredSecret("pg-pass")
-		if ag.Err != nil {
-			err = ag.Err
-			return err
-		}
 	} else {
 		teak.Info("t.pg", "Read postgresql options from app config")
 		opts.Host = ag.GetStringOr("pg-host", opts.Host)
@@ -80,5 +76,12 @@ func requirePostgres(ctx *cli.Context) (err error) {
 		opts.Password = ag.GetSecretOr("pg-pass", opts.Password)
 	}
 	err = ConnectWithOpts(&opts)
+
+	if err = db.Ping(); err != nil {
+		teak.LogFatal("t.pg", err)
+	} else {
+		teak.Info("t.pg", "Connected to postgres server at %s:%d",
+			opts.Host, opts.Port)
+	}
 	return err
 }

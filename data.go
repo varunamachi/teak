@@ -227,14 +227,18 @@ type VisitorFunc func(
 	parent *reflect.Value,
 	value *reflect.Value) (cont bool)
 
+//WalkConfig - determines how Walk is carried out
 type WalkConfig struct {
 	MaxDepth         int
 	Visitor          VisitorFunc
 	IgnoreContainers bool
 }
 
+//InfiniteDepth - used to indicate that Walk should continue till all the nodes
+//in the heirarchy are visited
 const InfiniteDepth int = -1
 
+//IsBasicType - tells if the kind of data type is basic or composite
 func IsBasicType(rt reflect.Kind) bool {
 	switch rt {
 	case reflect.Bool:
@@ -293,13 +297,10 @@ func IsBasicType(rt reflect.Kind) bool {
 	return false
 }
 
+//ToFlatMap - converts given composite data structure into a map of string to
+//interfaces. The heirarchy of types are flattened into single level. The
+//keys of the map indicate the original heirarchy
 func ToFlatMap(obj interface{}) (out map[string]interface{}) {
-	// val := reflect.ValueOf(obj)
-	// if val.Kind() != reflect.Struct &&
-	// 	val.Kind() != reflect.Map {
-	// 	Error("t.data", "FlatMap is valid only on struct or a map")
-	// 	return out
-	// }
 	out = make(map[string]interface{})
 	Walk(obj, &WalkConfig{
 		MaxDepth:         InfiniteDepth,

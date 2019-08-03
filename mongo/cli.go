@@ -9,7 +9,7 @@ import (
 func NewDefaultApp(
 	name string,
 	appVersion teak.Version,
-	apiVersion string,
+	apiVersion int,
 	desc string) *teak.App {
 	return teak.NewApp(
 		name,
@@ -62,10 +62,6 @@ func requireMongo(ctx *cli.Context) (err error) {
 		if len(opts.User) != 0 {
 			opts.Password = ag.GetRequiredSecret("mongo-pass")
 		}
-		if ag.Err != nil {
-			err = ag.Err
-			return err
-		}
 	} else {
 		teak.Info("t.mongo", "Read mongo options from app config")
 		opts.Host = ag.GetStringOr("mongo-host", opts.Host)
@@ -74,5 +70,11 @@ func requireMongo(ctx *cli.Context) (err error) {
 		opts.Password = ag.GetSecretOr("mongo-pass", opts.Password)
 	}
 	err = ConnectSingle(&opts)
+	if err != nil {
+		teak.LogFatal("t.pg", err)
+	} else {
+		teak.Info("t.mongo", "Connected to mongoDB server at %s:%d",
+			opts.Host, opts.Port)
+	}
 	return err
 }

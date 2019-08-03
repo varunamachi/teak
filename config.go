@@ -21,7 +21,7 @@ func readConfig(dirPath, appName string) (err error) {
 			err = json.Unmarshal(raw, &config)
 		}
 		if err == nil {
-			Info("App:Config", "Loaded config from %s", path)
+			Info("t.config", "Loaded config from %s", path)
 		}
 	}
 	return err
@@ -40,7 +40,7 @@ func LoadConfig(appName string) {
 		readConfig(os.ExpandEnv("$ALLUSERSPROFILE"), appName)
 		readConfig(os.ExpandEnv("$APPDATA"), appName)
 	default:
-		Warn("App:Config", "Unsupported operating system")
+		Warn("t.config", "Unsupported operating system")
 	}
 	readConfig(GetExecDir(), appName)
 }

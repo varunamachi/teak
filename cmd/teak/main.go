@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	_ "github.com/lib/pq"
 	"github.com/varunamachi/teak"
 	"github.com/varunamachi/teak/pg"
 )
@@ -15,7 +16,7 @@ func main() {
 			Minor: 0,
 			Patch: 1,
 		},
-		"v0",
+		0,
 		"Default teak app",
 	)
 	app.Commands = append(

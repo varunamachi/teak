@@ -11,7 +11,9 @@
             "mode": "debug",
             "program": "${workspaceRoot}/cmd/teak/",
             "env": {},
-            "args": []
+            "args": [
+                "serve"
+            ]
         }
     ]
 }

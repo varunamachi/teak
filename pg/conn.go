@@ -33,7 +33,6 @@ func (c *ConnOpts) String() string {
 
 //Connect - connect to postgres db with given connection string
 func Connect(optStr string) (err error) {
-	fmt.Println(optStr)
 	defer teak.LogErrorX("t.pg", "Failed to connect to postgres", err)
 	db, err = sqlx.Open("postgres", optStr)
 	if err == nil {

@@ -281,7 +281,7 @@ func ModifiedHTTPErrorHandler(err error, c echo.Context) {
 }
 
 //InitServer - initializes all the registered endpoints
-func InitServer(rootName string, apiVersion string) {
+func InitServer(rootName string, apiVersion int) {
 	e.HideBanner = true
 	e.HTTPErrorHandler = ModifiedHTTPErrorHandler
 	e.Use(middleware.Recover())
@@ -290,7 +290,7 @@ func InitServer(rootName string, apiVersion string) {
 	}))
 
 	//rootPath is a package variable
-	rootPath = rootName + "/api/v" + apiVersion + "/"
+	rootPath = fmt.Sprintf("%s/api/v%d/", rootName, apiVersion)
 	accessPos = len(rootPath) + len("in/")
 	root := e.Group(rootPath)
 	in := root.Group("in/")
