@@ -464,7 +464,7 @@ func LoadJSONFromArgs(ctx echo.Context, param string, out interface{}) (
 			err = json.Unmarshal([]byte(decoded), out)
 		}
 	}
-	return LogError("Net:Utils", err)
+	return LogError("t.net.srv", err)
 }
 
 //Merge - merges multple endpoint arrays
@@ -541,6 +541,7 @@ func GetServiceStartCmd(serveFunc func(port int) error) *cli.Command {
 			}
 			return err
 		},
-		Subcommands: []cli.Command{},
+		// Subcommands: []cli.Command{},
+		Subcommands: nil,
 	}
 }

@@ -104,16 +104,17 @@ func SendVerificationMail(user *User) (err error) {
 		"below link\n" + getVerificationLink(user)
 	subject := "Verification for Sparrow"
 	var emailKey string
-	err = GetConfig("emailKey", &emailKey)
-	if err == nil {
+	if GetConfig("emailKey", &emailKey) {
 		var email string
 		email, err = DecryptStr(emailKey, user.Email)
 		if err == nil {
 			err = SendEmail(email, subject, content)
 		}
+	} else {
+		err = errors.New("Failed read EMail configuration")
 	}
 	// fmt.Println(content)
-	return LogError("UMan:Auth", err)
+	return LogError("t.uman", err)
 }
 
 //DefaultAuthenticator - authenticator that uses applications UserStorage to
@@ -138,8 +139,7 @@ func getVerificationLink(user *User) (link string) {
 	}
 	//@MAYBE use a template
 	var host string
-	e := GetConfig("hostAddress", &host)
-	if e != nil {
+	if !GetConfig("hostAddress", &host) {
 		host = "http://localhost:4200"
 	}
 	link = host + "/" + "verify?" +
@@ -172,9 +172,10 @@ func UpdateUserInfo(user *User) (err error) {
 	user.FullName = user.FirstName + " " + user.LastName
 	// @TODO create a key retrieving strategy -- local | remote etc
 	var emailKey string
-	err = GetConfig("emailKey", &emailKey)
-	if err == nil {
+	if GetConfig("emailKey", &emailKey) {
 		user.Email, err = EncryptStr(emailKey, user.Email)
+	} else {
+		err = errors.New("Failed to read email configuration")
 	}
 	return err
 }

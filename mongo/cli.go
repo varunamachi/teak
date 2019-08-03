@@ -26,52 +26,53 @@ func NewDefaultApp(
 //mongoFlags - flags to get mongo connection options
 var mongoFlags = []cli.Flag{
 	cli.StringFlag{
-		Name:  "db-host",
-		Value: "localhost",
-		Usage: "Address of the host running mongodb",
+		Name:   "mongo-host",
+		Value:  "localhost",
+		Usage:  "Address of the host running mongodb",
+		EnvVar: "MONGO_HOST",
 	},
 	cli.IntFlag{
-		Name:  "db-port",
-		Value: 27017,
-		Usage: "Port on which Mongodb is listening",
+		Name:   "mongo-port",
+		Value:  27017,
+		Usage:  "Port on which Mongodb is listening",
+		EnvVar: "MONGO_PORT",
 	},
 	cli.StringFlag{
-		Name:  "db-user",
-		Value: "",
-		Usage: "Mongodb user name",
+		Name:   "mongo-user",
+		Value:  "",
+		Usage:  "Mongodb user name",
+		EnvVar: "MONGO_USER",
 	},
 	cli.StringFlag{
-		Name:  "db-pass",
-		Value: "",
-		Usage: "Mongodb password for connection",
+		Name:   "mongo-pass",
+		Value:  "",
+		Usage:  "Mongodb password for connection",
+		EnvVar: "MONGO_PASS",
 	},
 }
 
 func requireMongo(ctx *cli.Context) (err error) {
+	defer teak.LogErrorX("t.mongo", "Failed to initialize mongoDB", err)
 	ag := teak.NewArgGetter(ctx)
-	dbHost := ag.GetRequiredString("db-host")
-	dbPort := ag.GetRequiredInt("db-port")
-	dbUser := ag.GetOptionalString("db-user")
-	dbPassword := ""
-	if len(dbUser) != 0 {
-		dbPassword = ag.GetRequiredSecret("db-pass")
+	var opts ConnOpts
+	if !teak.GetConfig("mongo.opts", &opts) {
+		opts.Host = ag.GetRequiredString("mongo-host")
+		opts.Port = ag.GetRequiredInt("mongo-port")
+		opts.User = ag.GetOptionalString("mongo-user")
+		if len(opts.User) != 0 {
+			opts.Password = ag.GetRequiredSecret("mongo-pass")
+		}
+		if ag.Err != nil {
+			err = ag.Err
+			return err
+		}
+	} else {
+		teak.Info("t.mongo", "Read mongo options from app config")
+		opts.Host = ag.GetStringOr("mongo-host", opts.Host)
+		opts.Port = ag.GetIntOr("mongo-port", opts.Port)
+		opts.User = ag.GetStringOr("mongo-user", opts.User)
+		opts.Password = ag.GetSecretOr("mongo-pass", opts.Password)
 	}
-	if err = ag.Err; err == nil {
-		err = ConnectSingle(&ConnOpts{
-			Host:     dbHost,
-			Port:     dbPort,
-			User:     dbUser,
-			Password: dbPassword,
-		})
-	}
-	if err != nil {
-		teak.LogFatal("DB:Mongo", err)
-	}
+	err = ConnectSingle(&opts)
 	return err
 }
-
-//MakeRequireMongo - makes ccommand to require information that is needed to
-//connect to a mongodb instance
-// func MakeRequireMongo(cmd *cli.Command) *cli.Command {
-
-// }

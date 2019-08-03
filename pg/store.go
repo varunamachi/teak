@@ -122,11 +122,11 @@ func (mds *dataStorage) Destroy() (err error) {
 func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
 	cmd.Flags = append(cmd.Flags, pgFlags...)
 	if cmd.Before == nil {
-		cmd.Before = requireMongo
+		cmd.Before = requirePostgres
 	} else {
 		otherBefore := cmd.Before
 		cmd.Before = func(ctx *cli.Context) (err error) {
-			err = requireMongo(ctx)
+			err = requirePostgres(ctx)
 			if err == nil {
 				err = otherBefore(ctx)
 			}

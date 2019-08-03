@@ -2,6 +2,7 @@ package teak
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net/smtp"
@@ -19,9 +20,10 @@ type EmailConfig struct {
 //variable emainConfig for SMTP configuration - smtp.gmail.com:587
 func SendEmail(to, subject, meesage string) (err error) {
 	var emailConfig EmailConfig
-	err = GetConfig("emailConfig", &emailConfig)
-	if err != nil {
-		return LogError("Net:EMail", err)
+	found := GetConfig("emailConfig", &emailConfig)
+	if !found {
+		err = errors.New("Could not find EMail config")
+		return LogError("t.net.email", err)
 	}
 	// DumpJSON(emailConfig)
 	msg := "From: " + emailConfig.AppEMail + "\n" +
@@ -40,42 +42,42 @@ func SendEmail(to, subject, meesage string) (err error) {
 	var conn *tls.Conn
 	conn, err = tls.Dial("tcp", smtpURL, tlsConfig)
 	if err != nil {
-		return LogError("Net:EMail", err)
+		return LogError("t.net.email", err)
 	}
 	var client *smtp.Client
 	client, err = smtp.NewClient(conn, emailConfig.SMTPHost)
 	if err != nil {
-		return LogError("Net:EMail", err)
+		return LogError("t.net.email", err)
 	}
 	err = client.Auth(auth)
 	if err != nil {
-		return LogError("Net:EMail", err)
+		return LogError("t.net.email", err)
 	}
 
 	err = client.Mail(emailConfig.AppEMail)
 	if err != nil {
-		return LogError("Net:EMail", err)
+		return LogError("t.net.email", err)
 	}
 
 	client.Rcpt(to)
 	var writer io.WriteCloser
 	writer, err = client.Data()
 	if err != nil {
-		return LogError("Net:EMail", err)
+		return LogError("t.net.email", err)
 	}
 
 	_, err = writer.Write([]byte(msg))
 	if err != nil {
-		return LogError("Net:EMail", err)
+		return LogError("t.net.email", err)
 	}
 
 	err = writer.Close()
 	if err != nil {
-		return LogError("Net:EMail", err)
+		return LogError("t.net.email", err)
 	}
 
 	client.Quit()
-	return LogError("Net:EMail", err)
+	return LogError("t.net.email", err)
 	// err = smtp.SendMail(
 	// 	smtpURL,
 	// 	auth,

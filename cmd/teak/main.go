@@ -4,11 +4,11 @@ import (
 	"os"
 
 	"github.com/varunamachi/teak"
-	"github.com/varunamachi/teak/mongo"
+	"github.com/varunamachi/teak/pg"
 )
 
 func main() {
-	app := mongo.NewDefaultApp(
+	app := pg.NewDefaultApp(
 		"teak",
 		teak.Version{
 			Major: 0,
@@ -23,16 +23,4 @@ func main() {
 		*teak.GetStore().Wrap(teak.GetServiceStartCmd(teak.Serve)))
 	app.Exec(os.Args)
 
-	// 	teak.Walk(&teak.User{}, &teak.WalkConfig{
-	// 		MaxDepth:             3,
-	// 		VisitContainerParent: false,
-	// 		Visitor: func(
-	// 			path string,
-	// 			tag reflect.StructTag,
-	// 			parent *reflect.Value,
-	// 			value *reflect.Value) bool {
-	// 			fmt.Println(path, tag, value.String(), value.Kind())
-	// 			return true
-	// 		},
-	// 	})
 }

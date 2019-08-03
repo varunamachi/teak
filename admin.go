@@ -116,8 +116,8 @@ func createUserCmd() *cli.Command {
 			ag := NewArgGetter(ctx)
 			id := ag.GetRequiredString("id")
 			email := ag.GetRequiredString("email")
-			first := ag.GetString("first")
-			last := ag.GetString("last")
+			first := ag.GetRequiredString("first")
+			last := ag.GetRequiredString("last")
 			if err = ag.Err; err == nil {
 				one := AskPassword("Password")
 				two := AskPassword("Confirm")

@@ -228,9 +228,101 @@ type VisitorFunc func(
 	value *reflect.Value) (cont bool)
 
 type WalkConfig struct {
-	MaxDepth             int
-	Visitor              VisitorFunc
-	VisitContainerParent bool
+	MaxDepth         int
+	Visitor          VisitorFunc
+	IgnoreContainers bool
+}
+
+const InfiniteDepth int = -1
+
+func IsBasicType(rt reflect.Kind) bool {
+	switch rt {
+	case reflect.Bool:
+		return true
+	case reflect.Int:
+		return true
+	case reflect.Int8:
+		return true
+	case reflect.Int16:
+		return true
+	case reflect.Int32:
+		return true
+	case reflect.Int64:
+		return true
+	case reflect.Uint:
+		return true
+	case reflect.Uint8:
+		return true
+	case reflect.Uint16:
+		return true
+	case reflect.Uint32:
+		return true
+	case reflect.Uint64:
+		return true
+	case reflect.Uintptr:
+		return true
+	case reflect.Float32:
+		return true
+	case reflect.Float64:
+		return true
+	case reflect.Complex64:
+		return true
+	case reflect.Complex128:
+		return true
+	case reflect.Array:
+		return false
+	case reflect.Chan:
+		return false
+	case reflect.Func:
+		return false
+	case reflect.Interface:
+		return false
+	case reflect.Map:
+		return false
+	case reflect.Ptr:
+		return false
+	case reflect.Slice:
+		return false
+	case reflect.String:
+		return true
+	case reflect.Struct:
+		return false
+	case reflect.UnsafePointer:
+		return false
+	}
+	return false
+}
+
+func ToFlatMap(obj interface{}) (out map[string]interface{}) {
+	// val := reflect.ValueOf(obj)
+	// if val.Kind() != reflect.Struct &&
+	// 	val.Kind() != reflect.Map {
+	// 	Error("t.data", "FlatMap is valid only on struct or a map")
+	// 	return out
+	// }
+	out = make(map[string]interface{})
+	Walk(obj, &WalkConfig{
+		MaxDepth:         InfiniteDepth,
+		IgnoreContainers: false,
+		Visitor: func(
+			path string,
+			tag reflect.StructTag,
+			parent *reflect.Value,
+			value *reflect.Value) bool {
+			// fmt.Println("-->", path, "-->",
+			// value.Type(), value.Kind(), tag.Get("json"))
+			if IsBasicType(value.Kind()) {
+				out[path] = value.Interface()
+			} else if value.Kind() == reflect.Struct &&
+				value.Type() == reflect.TypeOf(time.Time{}) {
+				out[path] = value.Interface()
+				return false
+			}
+			return true
+		},
+	})
+
+	return out
 }
 
 //Walk - walk a given instance of struct/slice/map/basic type
@@ -284,6 +376,9 @@ func walkRecursive(
 		}
 		for i := 0; i < original.NumField(); i++ {
 			field := original.Field(i)
+			if !field.CanSet() { //Dont want to walk unexported fields
+				continue
+			}
 			structField := original.Type().Field(i)
 			fieldPath := structField.Name
 			if path != "" {
@@ -298,12 +393,11 @@ func walkRecursive(
 				&field)
 		}
 	case reflect.Slice:
-		if config.VisitContainerParent &&
-			!config.Visitor(path, "", parent, original) {
+		if config.IgnoreContainers {
 			return
 		}
 		for i := 0; i < original.Len(); i++ {
-			itemPath := path + "[" + strconv.Itoa(i) + "]"
+			itemPath := path + "." + strconv.Itoa(i)
 			value := original.Index(i)
 			walkRecursive(
 				config,
@@ -314,13 +408,12 @@ func walkRecursive(
 				&value)
 		}
 	case reflect.Map:
-		if config.VisitContainerParent &&
-			!config.Visitor(path, "", parent, original) {
+		if config.IgnoreContainers {
 			return
 		}
 		for _, key := range original.MapKeys() {
 			originalValue := original.MapIndex(key)
-			itemPath := path + "[" + key.String() + "]"
+			itemPath := path + "." + key.String()
 			walkRecursive(
 				config,
 				depth,

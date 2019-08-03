@@ -26,53 +26,59 @@ func NewDefaultApp(
 //pgFlags - flags to get postgres connection options
 var pgFlags = []cli.Flag{
 	cli.StringFlag{
-		Name:  "db-host",
-		Value: "localhost",
-		Usage: "Address of the host running postgres",
+		Name:   "pg-host",
+		Value:  "localhost",
+		Usage:  "Address of the host running postgres",
+		EnvVar: "PG_HOST",
 	},
 	cli.IntFlag{
-		Name:  "db-port",
-		Value: 27017,
-		Usage: "Port on which postgres is listening",
+		Name:   "pg-port",
+		Value:  5432,
+		Usage:  "Port on which postgres is listening",
+		EnvVar: "PG_PORT",
 	},
 	cli.StringFlag{
-		Name:  "db-name",
-		Value: "",
-		Usage: "Database name",
+		Name:   "pg-db",
+		Value:  "",
+		Usage:  "Database name",
+		EnvVar: "PG_DB",
 	},
 	cli.StringFlag{
-		Name:  "db-user",
-		Value: "",
-		Usage: "Postgres user name",
+		Name:   "pg-user",
+		Value:  "",
+		Usage:  "Postgres user name",
+		EnvVar: "PG_USER",
 	},
 	cli.StringFlag{
-		Name:  "db-pass",
-		Value: "",
-		Usage: "Postgres password for connection",
+		Name:   "pg-pass",
+		Value:  "",
+		Usage:  "Postgres password for connection",
+		EnvVar: "PG_PASS",
 	},
 }
 
-func requireMongo(ctx *cli.Context) (err error) {
+func requirePostgres(ctx *cli.Context) (err error) {
+	defer teak.LogErrorX("t.pg", "Failed to initialize mongoDB", err)
 	ag := teak.NewArgGetter(ctx)
-	dbHost := ag.GetRequiredString("db-host")
-	dbPort := ag.GetRequiredInt("db-port")
-	dbName := ag.GetRequiredString("db-name")
-	dbUser := ag.GetRequiredString("db-user")
-	dbPassword := ""
-	if len(dbUser) != 0 {
-		dbPassword = ag.GetRequiredSecret("db-pass")
+	var opts ConnOpts
+	if !teak.GetConfig("postgres.opts", &opts) {
+		opts.Host = ag.GetRequiredString("pg-host")
+		opts.Port = ag.GetRequiredInt("pg-port")
+		opts.User = ag.GetRequiredString("pg-user")
+		opts.DBName = ag.GetRequiredString("pg-user")
+		opts.Password = ag.GetRequiredSecret("pg-pass")
+		if ag.Err != nil {
+			err = ag.Err
+			return err
+		}
+	} else {
+		teak.Info("t.pg", "Read postgresql options from app config")
+		opts.Host = ag.GetStringOr("pg-host", opts.Host)
+		opts.Port = ag.GetIntOr("pg-port", opts.Port)
+		opts.User = ag.GetStringOr("pg-user", opts.User)
+		opts.DBName = ag.GetStringOr("pg-db", opts.User)
+		opts.Password = ag.GetSecretOr("pg-pass", opts.Password)
 	}
-	if err = ag.Err; err == nil {
-		err = ConnectWithOpts(&ConnOpts{
-			Host:     dbHost,
-			Port:     dbPort,
-			User:     dbUser,
-			Password: dbPassword,
-			DBName:   dbName,
-		})
-	}
-	if err != nil {
-		teak.LogFatal("t.ds.postgres", err)
-	}
+	err = ConnectWithOpts(&opts)
 	return err
 }

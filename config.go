@@ -62,13 +62,17 @@ func GetStringConfig(key string) (value string) {
 //value argument given. If the key does not exist in the config map or
 //if its not possible to populate value arg from retrieved value and error is
 //returned
-func GetConfig(key string, value interface{}) (err error) {
+func GetConfig(key string, value interface{}) (found bool) {
 	if val, ok := config[key]; ok {
-		err = mapstructure.Decode(val, value)
+		if err := mapstructure.Decode(val, value); err == nil {
+			found = true
+		} else {
+			LogErrorX("t.config", "Config decode failed", err)
+		}
 	} else {
-		err = fmt.Errorf("Config with key %s not found", key)
+		Trace("t.config", "Config with name %s not found", key)
 	}
-	return err
+	return found
 }
 
 //HasConfig - checks if a value exists in config for a key

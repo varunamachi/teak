@@ -10,13 +10,18 @@ if [ $# -gt 1 ] ; then
     USER="$2"
 fi
 
+echo "Bulding..."
 cd "cmd/teak" || exit -1
-GOOS=linux GOARCH=arm go install || exit -1
 
-echo "Generated at $GOPATH/bin/linux_arm"
-ls "$GOPATH/bin/linux_arm"
+GOARCH=arm64 GOOS=linux go install || exit -1
 
-scp "$GOPATH/bin/linux_arm/teak" "$USER@$HOST:/opt/bin"
+echo "Generated at $GOPATH/bin/linux_arm64"
+ls "$GOPATH/bin/linux_arm64"
 
-#ssh <topi> nohup "/opt/bin/teak" serve --port "8000" > "console.log" 2>&1 &
+# scp "$GOPATH/bin/linux_arm64/teak" "$USER@$HOST:/opt/bin"
+rsync -avz -e ssh "$GOPATH/bin/linux_arm64/teak" "$USER@$HOST:/opt/bin"
+
+# ssh "$USER@$HOST" 'nohup "/opt/bin/teak" serve --port 8000 > console.log 2>&1 &'
+
+ssh "$USER@$HOST" 'killall -9 teak ; "/opt/bin/teak" serve --port 8000'
 
