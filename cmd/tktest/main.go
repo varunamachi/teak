@@ -29,6 +29,8 @@ func main() {
 		},
 	})
 
-	// mp := teak.ToFlatMap(make([]teak.User, 10))
-	// teak.DumpJSON(mp)
+	fmt.Println("-- -- -- -- -- -- -- -- -- --")
+
+	mp := teak.ToFlatMap(make([]teak.User, 2), "json")
+	teak.DumpJSON(mp)
 }
