@@ -1,6 +1,8 @@
 package pg
 
 import (
+	"fmt"
+
 	"github.com/varunamachi/teak"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -20,7 +22,15 @@ func (mds *dataStorage) Name() string {
 //Create - creates an record in 'dtype' collection
 func (mds *dataStorage) Create(
 	dtype string, value interface{}) (err error) {
-	return teak.LogError("t.crud.pg", err)
+	defer teak.LogError("t.crud.pg", err)
+	// query := fmt.Sprintf("INSERT INTO %s(--) VALUES( -- ) ")
+	hdl := teak.GetItemHandler(dtype)
+	if hdl == nil {
+		err = fmt.Errorf("Failed to get handler for data type %s", dtype)
+		return err
+	}
+	// hdl.
+	return
 }
 
 //Update - updates the records in 'dtype' collection which are matched by

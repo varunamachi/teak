@@ -218,26 +218,6 @@ type DataStorage interface {
 //@TODO Data store ini shall do these
 // vevt.SetEventAuditor(auditor)
 
-//VisitorFunc - function that will be called on each value of reflected type.
-//The return value decides whether to continue with depth search in current
-//branch
-type VisitorFunc func(
-	path string,
-	tag reflect.StructTag,
-	parent *reflect.Value,
-	value *reflect.Value) (cont bool)
-
-//WalkConfig - determines how Walk is carried out
-type WalkConfig struct {
-	MaxDepth         int
-	Visitor          VisitorFunc
-	IgnoreContainers bool
-}
-
-//InfiniteDepth - used to indicate that Walk should continue till all the nodes
-//in the heirarchy are visited
-const InfiniteDepth int = -1
-
 //IsBasicType - tells if the kind of data type is basic or composite
 func IsBasicType(rt reflect.Kind) bool {
 	switch rt {
@@ -300,31 +280,62 @@ func IsBasicType(rt reflect.Kind) bool {
 //ToFlatMap - converts given composite data structure into a map of string to
 //interfaces. The heirarchy of types are flattened into single level. The
 //keys of the map indicate the original heirarchy
-func ToFlatMap(obj interface{}) (out map[string]interface{}) {
+func ToFlatMap(obj interface{}, tagName string) (out map[string]interface{}) {
 	out = make(map[string]interface{})
 	Walk(obj, &WalkConfig{
 		MaxDepth:         InfiniteDepth,
 		IgnoreContainers: false,
-		Visitor: func(
-			path string,
-			tag reflect.StructTag,
-			parent *reflect.Value,
-			value *reflect.Value) bool {
-			// fmt.Println("-->", path, "-->",
-			// value.Type(), value.Kind(), tag.Get("json"))
-			if IsBasicType(value.Kind()) {
-				out[path] = value.Interface()
-			} else if value.Kind() == reflect.Struct &&
-				value.Type() == reflect.TypeOf(time.Time{}) {
-				out[path] = value.Interface()
+		FieldNameRetriever: func(field *reflect.StructField) string {
+			jt := field.Tag.Get(tagName)
+			if jt != "" {
+				return jt
+			}
+			return field.Name
+		},
+		Visitor: func(state *WalkerState) bool {
+			if IsBasicType(state.Current.Kind()) {
+				out[state.Path] = state.Current.Interface()
+			} else if state.Current.Kind() == reflect.Struct &&
+				state.Current.Type() == reflect.TypeOf(time.Time{}) {
+				out[state.Path] = state.Current.Interface()
 				return false
 			}
 			return true
 		},
 	})
-
 	return out
 }
+
+//VisitorFunc - function that will be called on each value of reflected type.
+//The return value decides whether to continue with depth search in current
+//branch
+type VisitorFunc func(state *WalkerState) (cont bool)
+
+//FieldNameRetriever - retrieves name for the field from given
+type FieldNameRetriever func(field *reflect.StructField) (name string)
+
+//WalkConfig - determines how Walk is carried out
+type WalkConfig struct {
+	Visitor            VisitorFunc        //visitor function
+	FieldNameRetriever FieldNameRetriever //func to get name from struct field
+	MaxDepth           int                //Stop walk at this depth
+	IgnoreContainers   bool               //Ignore slice and map parent objects
+	VisitPrivate       bool               //Visit private fields
+	VisitRootStruct    bool               //Visit the root struct thats passed
+}
+
+//WalkerState - current state of the walk
+type WalkerState struct {
+	Depth   int
+	Name    string
+	Path    string
+	Parent  *reflect.Value
+	Current *reflect.Value
+}
+
+//InfiniteDepth - used to indicate that Walk should continue till all the nodes
+//in the heirarchy are visited
+const InfiniteDepth int = -1
 
 //Walk - walk a given instance of struct/slice/map/basic type
 func Walk(
@@ -332,100 +343,105 @@ func Walk(
 	config *WalkConfig) {
 	// Wrap the original in a reflect.Value
 	original := reflect.ValueOf(obj)
-
-	walkRecursive(config, 0, "", "", nil, &original)
-}
-
-func walkRecursive(
-	config *WalkConfig,
-	depth int,
-	tag reflect.StructTag,
-	path string,
-	parent *reflect.Value,
-	original *reflect.Value) {
-	if config.MaxDepth > 0 && depth == config.MaxDepth+1 {
+	if config.Visitor == nil {
 		return
 	}
-	depth++
-	switch original.Kind() {
+	if config.FieldNameRetriever == nil {
+		config.FieldNameRetriever = func(field *reflect.StructField) string {
+			return field.Name
+		}
+	}
+	walkRecursive(
+		config,
+		WalkerState{
+			Depth:   0,
+			Name:    "",
+			Path:    "",
+			Parent:  nil,
+			Current: &original,
+		})
+}
+
+func walkRecursive(config *WalkConfig, state WalkerState) {
+	if config.MaxDepth > 0 && state.Depth == config.MaxDepth+1 {
+		return
+	}
+	//We copy any field from state which is used inside the loops, so that
+	//state is not cumulatevily modified in a loop
+	cur := state.Current
+	path := state.Path
+	switch state.Current.Kind() {
 	case reflect.Ptr:
-		originalValue := original.Elem()
+		originalValue := state.Current.Elem()
 		if !originalValue.IsValid() {
 			return
 		}
-		walkRecursive(
-			config,
-			depth,
-			"",
-			path,
-			original,
-			&originalValue)
+		state.Parent = state.Current
+		state.Current = &originalValue
+		walkRecursive(config, state)
 
 	case reflect.Interface:
-		originalValue := original.Elem()
-		walkRecursive(
-			config,
-			depth,
-			"",
-			path,
-			original,
-			&originalValue)
+		originalValue := state.Current.Elem()
+		state.Parent = state.Current
+		state.Current = &originalValue
+		walkRecursive(config, state)
 
 	case reflect.Struct:
-		if !config.Visitor(path, "", parent, original) {
+		state.Depth++
+		if state.Depth == 1 &&
+			config.VisitRootStruct &&
+			!config.Visitor(&state) {
 			return
 		}
-		for i := 0; i < original.NumField(); i++ {
-			field := original.Field(i)
-			if !field.CanSet() { //Dont want to walk unexported fields
+		for i := 0; i < cur.NumField(); i++ {
+			field := cur.Field(i)
+			//Dont want to walk unexported fields if VisitPrivate is false
+			if !(config.VisitPrivate || field.CanSet()) {
 				continue
 			}
-			structField := original.Type().Field(i)
-			fieldPath := structField.Name
+			structField := cur.Type().Field(i)
+			state.Name = structField.Name
 			if path != "" {
-				fieldPath = path + "." + structField.Name
+				state.Path = path + "." +
+					config.FieldNameRetriever(&structField)
+			} else {
+				state.Path = config.FieldNameRetriever(&structField)
 			}
-			walkRecursive(
-				config,
-				depth,
-				structField.Tag,
-				fieldPath,
-				original,
-				&field)
+			state.Parent = state.Current
+			state.Current = &field
+			walkRecursive(config, state)
 		}
+
 	case reflect.Slice:
+		state.Depth++
 		if config.IgnoreContainers {
 			return
 		}
-		for i := 0; i < original.Len(); i++ {
-			itemPath := path + "." + strconv.Itoa(i)
-			value := original.Index(i)
-			walkRecursive(
-				config,
-				depth,
-				"",
-				itemPath,
-				original,
-				&value)
+
+		for i := 0; i < cur.Len(); i++ {
+			state.Name = strconv.Itoa(i)
+			state.Path = path + "." + state.Name
+			value := cur.Index(i)
+			state.Parent = state.Current
+			state.Current = &value
+			walkRecursive(config, state)
 		}
 	case reflect.Map:
+		state.Depth++
 		if config.IgnoreContainers {
 			return
 		}
-		for _, key := range original.MapKeys() {
-			originalValue := original.MapIndex(key)
-			itemPath := path + "." + key.String()
-			walkRecursive(
-				config,
-				depth,
-				"",
-				itemPath,
-				original,
-				&originalValue)
+		for _, key := range cur.MapKeys() {
+			originalValue := cur.MapIndex(key)
+			state.Name = key.String()
+			state.Path = path + "." + state.Name
+			state.Parent = state.Current
+			state.Current = &originalValue
+			walkRecursive(config, state)
 		}
 	// And everything else will simply be taken from the original
 	default:
-		if cont := config.Visitor(path, tag, parent, original); !cont {
+		if cont := config.Visitor(&state); !cont {
 			return
 		}
 

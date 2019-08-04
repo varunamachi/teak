@@ -107,6 +107,11 @@ type StoredItemHandler interface {
 
 var siHandlers = make(map[string]StoredItemHandler)
 
+//GetItemHandler - get the item handler for given data type
+func GetItemHandler(dtype string) StoredItemHandler {
+	return siHandlers[dtype]
+}
+
 //defaultSM - default status and message
 func defaultSM(opern, name string) (int, string) {
 	return http.StatusOK, fmt.Sprintf("%s %s - successful", opern, name)

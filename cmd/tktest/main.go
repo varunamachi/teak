@@ -1,27 +1,34 @@
 package main
 
 import (
+	"fmt"
+	"reflect"
+
 	_ "github.com/lib/pq"
 	"github.com/varunamachi/teak"
-	"github.com/varunamachi/teak/pg"
 )
 
 func main() {
-	// 	teak.Walk(&teak.User{}, &teak.WalkConfig{
-	// 		MaxDepth:             3,
-	// 		VisitContainerParent: false,
-	// 		Visitor: func(
-	// 			path string,
-	// 			tag reflect.StructTag,
-	// 			parent *reflect.Value,
-	// 			value *reflect.Value) bool {
-	// 			fmt.Println(path, tag, value.String(), value.Kind())
-	// 			return true
-	// 		},
-	// 	})
+	teak.Walk(&teak.User{}, &teak.WalkConfig{
+		MaxDepth:         3,
+		IgnoreContainers: true,
+		FieldNameRetriever: func(field *reflect.StructField) string {
+			jt := field.Tag.Get("json")
+			if jt != "" {
+				return jt
+			}
+			return field.Name
+		},
+		Visitor: func(state *teak.WalkerState) bool {
+			fmt.Println(
+				state.Path,
+				state.Name,
+				state.Current.String(),
+				state.Current.Kind())
+			return true
+		},
+	})
 
 	// mp := teak.ToFlatMap(make([]teak.User, 10))
 	// teak.DumpJSON(mp)
-
-	teak.DumpJSON(&pg.ConnOpts{})
 }
