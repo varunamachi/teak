@@ -2,6 +2,7 @@ package pg
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/varunamachi/teak"
 	"gopkg.in/urfave/cli.v1"
@@ -9,6 +10,34 @@ import (
 
 //dataStorage - Postgres implementation for dataStorage interface
 type dataStorage struct{}
+
+// func toMap(obj interface{}) (out map[string]string) {
+// 	out = make(map[string]string)
+// 	teak.Walk(obj, &teak.WalkConfig{
+// 		MaxDepth:         teak.InfiniteDepth,
+// 		IgnoreContainers: false,
+// 		FieldNameRetriever: func(field *reflect.StructField) string {
+// 			jt := field.Tag.Get("json")
+// 			if jt != "" {
+// 				return jt
+// 			}
+// 			return field.Name
+// 		},
+// 		Visitor: func(state *teak.WalkerState) bool {
+// 			if teak.IsBasicType(state.Current.Kind()) {
+// 				out[state.Path] = state.Current.String()
+// 			} else if state.Current.Kind() == reflect.Struct &&
+// 				state.Current.Type() == reflect.TypeOf(time.Time{}) {
+// 				// out[state.Path] = state.Current.Interface()
+// 				tm := state.Current.Interface().(time.Time)
+
+// 				return false
+// 			}
+// 			return true
+// 		},
+// 	})
+// 	return out
+// }
 
 //NewStorage - creates a new mongodb based data storage implementation
 func NewStorage() teak.DataStorage {
@@ -22,20 +51,38 @@ func (mds *dataStorage) Name() string {
 //Create - creates an record in 'dtype' collection
 func (mds *dataStorage) Create(
 	dtype string, value interface{}) (err error) {
-	defer teak.LogError("t.crud.pg", err)
+	defer teak.LogErrorX("t.crud.pg", "Failed to create item", err)
 	// query := fmt.Sprintf("INSERT INTO %s(--) VALUES( -- ) ")
 	hdl := teak.GetItemHandler(dtype)
 	if hdl == nil {
 		err = fmt.Errorf("Failed to get handler for data type %s", dtype)
 		return err
 	}
-
-	// for i, pn := range hdl.PropNames() {
-	// 	if i != 0 {
-
-	// 	}
-	// }
-	return
+	mp := teak.ToFlatMap(value, "json")
+	buf := strings.Builder{}
+	buf.WriteString("INSERT INTO ")
+	buf.WriteString(dtype)
+	buf.WriteString("(")
+	for i, propName := range hdl.PropNames() {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(propName)
+	}
+	buf.WriteString(") VALUES(")
+	for i, propName := range hdl.PropNames() {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		_, has := mp[propName]
+		if !has {
+			err = fmt.Errorf("Could not find property '%s' in data type '%s'",
+				propName, dtype)
+			break
+		}
+		// buf.WriteString(val) //fix flat map to give strings
+	}
+	return err
 }
 
 //Update - updates the records in 'dtype' collection which are matched by
