@@ -12,8 +12,10 @@ if [ ! -d "$cmdDir" ] ; then
     echo "Command directory $cmdDir does not exist"
 fi
 cd "$cmdDir" || exit -1
+echo "Building...."
 go install || exit -1
-
+echo "Running...."
+echo
 shift
 "$cmd" "$@"
 

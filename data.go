@@ -327,7 +327,7 @@ type WalkConfig struct {
 //WalkerState - current state of the walk
 type WalkerState struct {
 	Depth   int
-	Name    string
+	Field   *reflect.StructField
 	Path    string
 	Parent  *reflect.Value
 	Current *reflect.Value
@@ -355,7 +355,7 @@ func Walk(
 		config,
 		WalkerState{
 			Depth:   0,
-			Name:    "",
+			Field:   nil,
 			Path:    "",
 			Parent:  nil,
 			Current: &original,
@@ -400,7 +400,7 @@ func walkRecursive(config *WalkConfig, state WalkerState) {
 				continue
 			}
 			structField := cur.Type().Field(i)
-			state.Name = structField.Name
+			state.Field = &structField
 			if path != "" {
 				state.Path = path + "." +
 					config.FieldNameRetriever(&structField)
@@ -419,8 +419,8 @@ func walkRecursive(config *WalkConfig, state WalkerState) {
 		}
 
 		for i := 0; i < cur.Len(); i++ {
-			state.Name = strconv.Itoa(i)
-			state.Path = path + "." + state.Name
+			state.Field = nil
+			state.Path = path + "." + strconv.Itoa(i)
 			value := cur.Index(i)
 			state.Parent = state.Current
 			state.Current = &value
@@ -433,8 +433,8 @@ func walkRecursive(config *WalkConfig, state WalkerState) {
 		}
 		for _, key := range cur.MapKeys() {
 			originalValue := cur.MapIndex(key)
-			state.Name = key.String()
-			state.Path = path + "." + state.Name
+			state.Field = nil
+			state.Path = path + "." + key.String()
 			state.Parent = state.Current
 			state.Current = &originalValue
 			walkRecursive(config, state)

@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	fmt.Printf("%20s%10s%10s%20s\n", "NAME", "VALUE", "KIND", "PATH")
 	teak.Walk(&teak.User{}, &teak.WalkConfig{
 		MaxDepth:         3,
 		IgnoreContainers: true,
@@ -20,17 +21,21 @@ func main() {
 			return field.Name
 		},
 		Visitor: func(state *teak.WalkerState) bool {
-			fmt.Println(
-				state.Path,
-				state.Name,
-				state.Current.String(),
-				state.Current.Kind())
+			name := ""
+			if state.Field != nil {
+				name = state.Field.Tag.Get("json")
+			}
+			fmt.Printf("%20s%10s%10s%20s\n",
+				name,
+				state.Current.Interface(),
+				state.Current.Kind().String(),
+				state.Path)
 			return true
 		},
 	})
 
 	fmt.Println("-- -- -- -- -- -- -- -- -- --")
 
-	mp := teak.ToFlatMap(make([]teak.User, 2), "json")
-	teak.DumpJSON(mp)
+	// mp := teak.ToFlatMap(make([]teak.User, 2), "json")
+	// teak.DumpJSON(mp)
 }

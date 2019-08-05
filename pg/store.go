@@ -29,7 +29,12 @@ func (mds *dataStorage) Create(
 		err = fmt.Errorf("Failed to get handler for data type %s", dtype)
 		return err
 	}
-	// hdl.
+
+	// for i, pn := range hdl.PropNames() {
+	// 	if i != 0 {
+
+	// 	}
+	// }
 	return
 }
 
