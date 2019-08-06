@@ -285,6 +285,8 @@ func ToFlatMap(obj interface{}, tagName string) (out map[string]interface{}) {
 	Walk(obj, &WalkConfig{
 		MaxDepth:         InfiniteDepth,
 		IgnoreContainers: false,
+		VisitPrivate:     false,
+		VisitRootStruct:  false,
 		FieldNameRetriever: func(field *reflect.StructField) string {
 			jt := field.Tag.Get(tagName)
 			if jt != "" {
@@ -293,13 +295,7 @@ func ToFlatMap(obj interface{}, tagName string) (out map[string]interface{}) {
 			return field.Name
 		},
 		Visitor: func(state *WalkerState) bool {
-			if IsBasicType(state.Current.Kind()) {
-				out[state.Path] = state.Current.Interface()
-			} else if state.Current.Kind() == reflect.Struct &&
-				state.Current.Type() == reflect.TypeOf(time.Time{}) {
-				out[state.Path] = state.Current.Interface()
-				return false
-			}
+			out[state.Path] = state.Current.Interface()
 			return true
 		},
 	})
@@ -388,9 +384,11 @@ func walkRecursive(config *WalkConfig, state WalkerState) {
 
 	case reflect.Struct:
 		state.Depth++
-		if state.Depth == 1 &&
-			config.VisitRootStruct &&
-			!config.Visitor(&state) {
+		if state.Depth == 1 {
+			if config.VisitRootStruct && !config.Visitor(&state) {
+				return
+			}
+		} else if !config.Visitor(&state) {
 			return
 		}
 		for i := 0; i < cur.NumField(); i++ {

@@ -551,5 +551,21 @@ func (uh *UserHandler) CreateInstance(by string) interface{} {
 
 //PropNames - get prop names of Users
 func (uh *UserHandler) PropNames() []string {
-	return []string{}
+	return []string{
+		"id",
+		"email",
+		"auth",
+		"firstName",
+		"lastName",
+		"title",
+		"fullName",
+		"state",
+		"verID",
+		"pwdExpiry",
+		"createdAt",
+		"createdBy",
+		"modifiedAt",
+		"modifiedBy",
+		"verified",
+	}
 }

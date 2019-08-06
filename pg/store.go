@@ -51,8 +51,7 @@ func (mds *dataStorage) Name() string {
 //Create - creates an record in 'dtype' collection
 func (mds *dataStorage) Create(
 	dtype string, value interface{}) (err error) {
-	defer teak.LogErrorX("t.crud.pg", "Failed to create item", err)
-	// query := fmt.Sprintf("INSERT INTO %s(--) VALUES( -- ) ")
+	defer func() { teak.LogErrorX("t.crud.pg", "Failed to create item", err) }()
 	hdl := teak.GetItemHandler(dtype)
 	if hdl == nil {
 		err = fmt.Errorf("Failed to get handler for data type %s", dtype)
@@ -64,24 +63,30 @@ func (mds *dataStorage) Create(
 	buf.WriteString(dtype)
 	buf.WriteString("(")
 	for i, propName := range hdl.PropNames() {
+		if _, has := mp[propName]; !has {
+			continue
+		}
 		if i != 0 {
 			buf.WriteString(", ")
 		}
 		buf.WriteString(propName)
 	}
-	buf.WriteString(") VALUES(")
+	buf.WriteString(") VALUES (")
+	vals := make([]interface{}, 0, len(mp))
 	for i, propName := range hdl.PropNames() {
+		val, has := mp[propName]
+		if !has {
+			continue
+		}
+		vals = append(vals, val)
 		if i != 0 {
 			buf.WriteString(", ")
 		}
-		_, has := mp[propName]
-		if !has {
-			err = fmt.Errorf("Could not find property '%s' in data type '%s'",
-				propName, dtype)
-			break
-		}
-		// buf.WriteString(val) //fix flat map to give strings
+		buf.WriteString("?") //fix flat map to give strings
 	}
+	buf.WriteString(");")
+	fmt.Println(buf.String())
+	// db.Exec(buf.String(), vals...)
 	return err
 }
 

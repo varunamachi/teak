@@ -177,7 +177,7 @@ func LogError(module string, err error) error {
 func LogErrorX(module, msg string, err error) error {
 	if err != nil && ErrorLevel >= lconf.FilterLevel {
 		_, file, line, _ := runtime.Caller(1)
-		lconf.Logger.Log(ErrorLevel, module, "%s -- %s. ERROR: %s @ %d",
+		lconf.Logger.Log(ErrorLevel, module, "%s -- %s. @ %s:%d",
 			msg,
 			err.Error(),
 			file,
