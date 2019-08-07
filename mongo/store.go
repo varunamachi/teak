@@ -98,7 +98,7 @@ func (mds *dataStorage) Count(
 	//@TODO handle filters
 	conn := DefaultConn()
 	defer conn.Close()
-	selector := GenerateSelector(filter)
+	selector := generateSelector(filter)
 	count, err = conn.C(dtype).
 		Find(selector).
 		Count()
@@ -114,7 +114,7 @@ func (mds *dataStorage) Retrieve(
 	limit int,
 	filter *teak.Filter,
 	out interface{}) (err error) {
-	selector := GenerateSelector(filter)
+	selector := generateSelector(filter)
 	conn := DefaultConn()
 	defer conn.Close()
 	err = conn.C(dtype).
@@ -137,7 +137,7 @@ func (mds *dataStorage) RetrieveWithCount(
 	out interface{}) (count int, err error) {
 	conn := DefaultConn()
 	defer conn.Close()
-	selector := GenerateSelector(filter)
+	selector := generateSelector(filter)
 	q := conn.C(dtype).Find(selector)
 	count, err = q.Count()
 	if err == nil {
@@ -225,7 +225,7 @@ func (mds *dataStorage) GetFilterValuesX(
 	}
 	var selector bson.M
 	if filter != nil {
-		selector = GenerateSelector(filter)
+		selector = generateSelector(filter)
 	}
 	values = teak.M{}
 	err = conn.C(dtype).Pipe([]bson.M{
@@ -240,7 +240,7 @@ func (mds *dataStorage) GetFilterValuesX(
 }
 
 //GenerateSelector - creates mongodb query for a generic filter
-func GenerateSelector(
+func generateSelector(
 	filter *teak.Filter) (selector bson.M) {
 	queries := make([]bson.M, 0, 100)
 	// for key, values := range filter.Props {

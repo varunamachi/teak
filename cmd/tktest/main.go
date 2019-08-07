@@ -13,7 +13,8 @@ import (
 
 func commands() []*cli.Command {
 	return []*cli.Command{
-		teak.GetStore().Wrap(&cli.Command{
+		// teak.GetStore().Wrap(
+		&cli.Command{
 			Name:        "ds",
 			Description: "Test data source related functionality",
 			Subcommands: []cli.Command{
@@ -24,8 +25,20 @@ func commands() []*cli.Command {
 						teak.GetStore().Create("teakUser", &teak.User{})
 					},
 				},
+				cli.Command{
+					Name:        "update",
+					Description: "Test creation",
+					Action: func(ctx *cli.Context) {
+						teak.GetStore().Update(
+							"teakUser",
+							"id",
+							"userID",
+							&teak.User{})
+					},
+				},
 			},
-		}),
+		},
+		// ),
 		&cli.Command{
 			Name:        "walk",
 			Description: "Test struct walk",

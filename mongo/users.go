@@ -57,7 +57,7 @@ func (m *userStorage) GetUsers(offset, limit int, filter *teak.Filter) (
 	users []*teak.User, err error) {
 	conn := DefaultConn()
 	defer conn.Close()
-	selector := GenerateSelector(filter)
+	selector := generateSelector(filter)
 	users = make([]*teak.User, 0, limit)
 	err = conn.C("users").
 		Find(selector).
@@ -72,7 +72,7 @@ func (m *userStorage) GetUsers(offset, limit int, filter *teak.Filter) (
 func (m *userStorage) GetCount(filter *teak.Filter) (count int, err error) {
 	conn := DefaultConn()
 	defer conn.Close()
-	selector := GenerateSelector(filter)
+	selector := generateSelector(filter)
 	count, err = conn.C("users").Find(selector).Count()
 	return count, teak.LogError("t.user.mongo", err)
 }
@@ -99,7 +99,7 @@ func (m *userStorage) GetUsersWithCount(
 	conn := DefaultConn()
 	defer conn.Close()
 	var selector bson.M
-	selector = GenerateSelector(filter)
+	selector = generateSelector(filter)
 	users = make([]*teak.User, 0, limit)
 	q := conn.C("users").Find(selector).Sort("-created")
 	total, err = q.Count()

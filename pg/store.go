@@ -2,6 +2,7 @@ package pg
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/varunamachi/teak"
@@ -57,7 +58,7 @@ func (mds *dataStorage) Create(
 		buf.WriteString("?") //fix flat map to give strings
 	}
 	buf.WriteString(");")
-	fmt.Println(buf.String())
+	// fmt.Println(buf.String())
 	_, err = db.Exec(buf.String(), vals...)
 	return err
 }
@@ -79,21 +80,24 @@ func (mds *dataStorage) Update(
 	buf := strings.Builder{}
 	buf.WriteString("UPDATE ")
 	buf.WriteString(dtype)
-	buf.WriteString("SET ")
+	buf.WriteString(" SET ")
+	vals := make([]interface{}, 0, len(mp))
 	for i, propName := range hdl.PropNames() {
-		if _, has := mp[propName]; !has {
-			//We did not find the property from
-			continue
+		if val, has := mp[propName]; has && val != keyField {
+			if i != 0 {
+				buf.WriteString(", ")
+			}
+			buf.WriteString(propName)
+			buf.WriteString(" = ?")
+			vals = append(vals, val)
 		}
-		if i != 0 {
-			buf.WriteString(", ")
-		}
-		buf.WriteString(propName)
 	}
 	buf.WriteString(" WHERE ")
-	buf.WriteString(";")
-	fmt.Println(buf.String())
-	// _, err = db.Exec(buf.String(), vals...)
+	buf.WriteString(keyField)
+	buf.WriteString(" = ?;")
+	vals = append(vals, key)
+	// fmt.Println(buf.String())
+	_, err = db.Exec(buf.String(), vals...)
 	return err
 }
 
@@ -102,7 +106,15 @@ func (mds *dataStorage) Delete(
 	dtype string,
 	keyField string,
 	key interface{}) (err error) {
-	return teak.LogError("t.crud.pg", err)
+	defer func() { teak.LogErrorX("t.crud.pg", "Failed to delete item", err) }()
+	var buf strings.Builder
+	buf.WriteString("DELETE FROM ")
+	buf.WriteString(dtype)
+	buf.WriteString(" WHERE ")
+	buf.WriteString(keyField)
+	buf.WriteString(" = ?;")
+	_, err = db.Exec(buf.String(), key)
+	return err
 }
 
 //RetrieveOne - gets a record matched by given matcher from collection 'dtype'
@@ -111,13 +123,25 @@ func (mds *dataStorage) RetrieveOne(
 	keyField string,
 	key interface{},
 	out interface{}) (err error) {
-	return teak.LogError("t.crud.pg", err)
+	defer func() { teak.LogErrorX("t.crud.pg", "Failed to delete item", err) }()
+	var buf strings.Builder
+	buf.WriteString("SELECT * FROM ")
+	buf.WriteString(dtype)
+	buf.WriteString(" WHERE ")
+	buf.WriteString(keyField)
+	buf.WriteString(" = ?;")
+	err = db.Select(out, buf.String(), key)
+	return err
 }
 
 //Count - counts the number of items for data type
 func (mds *dataStorage) Count(
 	dtype string, filter *teak.Filter) (count int, err error) {
-	return count, teak.LogError("t.crud.pg", err)
+	defer func() { teak.LogErrorX("t.crud.pg", "Failed to delete item", err) }()
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s",
+		dtype, generateSelector(filter))
+	err = db.Select(&count, query)
+	return count, err
 }
 
 //Retrieve - gets all the items from collection 'dtype' selected by filter &
@@ -129,6 +153,20 @@ func (mds *dataStorage) Retrieve(
 	limit int,
 	filter *teak.Filter,
 	out interface{}) (err error) {
+	selector := generateSelector(filter)
+	var buf strings.Builder
+	buf.Grow(100)
+	buf.WriteString("SELECT * FROM ")
+	buf.WriteString(dtype)
+	buf.WriteString(" WHERE ")
+	buf.WriteString(selector)
+	buf.WriteString(" OFFSET ")
+	buf.WriteString(strconv.Itoa(offset))
+	buf.WriteString(" LIMIT ")
+	buf.WriteString(strconv.Itoa(limit))
+	buf.WriteString(" ORDER BY ")
+	buf.WriteString(sortFiled) //Check for minus sign?? like in mongo??
+	err = db.Select(out, buf.String())
 	return teak.LogError("t.crud.pg", err)
 }
 
@@ -141,6 +179,7 @@ func (mds *dataStorage) RetrieveWithCount(
 	limit int,
 	filter *teak.Filter,
 	out interface{}) (count int, err error) {
+
 	return count, teak.LogError("t.crud.pg", err)
 }
 
@@ -203,4 +242,8 @@ func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
 //GetManageCommands - commands that can be used to manage this data storage
 func (mds *dataStorage) GetManageCommands() (commands []cli.Command) {
 	return commands
+}
+
+func generateSelector(filter *teak.Filter) (selector string) {
+	return selector
 }
