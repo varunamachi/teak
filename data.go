@@ -277,6 +277,13 @@ func IsBasicType(rt reflect.Kind) bool {
 	return false
 }
 
+//IsTime - tells if a reflected value is time
+func IsTime(val *reflect.Value) bool {
+	return val.IsValid() &&
+		val.Kind() == reflect.Struct &&
+		val.Type() == reflect.TypeOf(time.Time{})
+}
+
 //ToFlatMap - converts given composite data structure into a map of string to
 //interfaces. The heirarchy of types are flattened into single level. The
 //keys of the map indicate the original heirarchy
@@ -295,7 +302,9 @@ func ToFlatMap(obj interface{}, tagName string) (out map[string]interface{}) {
 			return field.Name
 		},
 		Visitor: func(state *WalkerState) bool {
-			out[state.Path] = state.Current.Interface()
+			if IsBasicType(state.Current.Kind()) || IsTime(state.Current) {
+				out[state.Path] = state.Current.Interface()
+			}
 			return true
 		},
 	})
@@ -420,7 +429,7 @@ func walkRecursive(config *WalkConfig, state WalkerState) {
 			state.Field = nil
 			state.Path = path + "." + strconv.Itoa(i)
 			value := cur.Index(i)
-			state.Parent = state.Current
+			// state.Parent = state.Current
 			state.Current = &value
 			walkRecursive(config, state)
 		}

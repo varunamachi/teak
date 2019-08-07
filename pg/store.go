@@ -11,34 +11,6 @@ import (
 //dataStorage - Postgres implementation for dataStorage interface
 type dataStorage struct{}
 
-// func toMap(obj interface{}) (out map[string]string) {
-// 	out = make(map[string]string)
-// 	teak.Walk(obj, &teak.WalkConfig{
-// 		MaxDepth:         teak.InfiniteDepth,
-// 		IgnoreContainers: false,
-// 		FieldNameRetriever: func(field *reflect.StructField) string {
-// 			jt := field.Tag.Get("json")
-// 			if jt != "" {
-// 				return jt
-// 			}
-// 			return field.Name
-// 		},
-// 		Visitor: func(state *teak.WalkerState) bool {
-// 			if teak.IsBasicType(state.Current.Kind()) {
-// 				out[state.Path] = state.Current.String()
-// 			} else if state.Current.Kind() == reflect.Struct &&
-// 				state.Current.Type() == reflect.TypeOf(time.Time{}) {
-// 				// out[state.Path] = state.Current.Interface()
-// 				tm := state.Current.Interface().(time.Time)
-
-// 				return false
-// 			}
-// 			return true
-// 		},
-// 	})
-// 	return out
-// }
-
 //NewStorage - creates a new mongodb based data storage implementation
 func NewStorage() teak.DataStorage {
 	return &dataStorage{}
@@ -86,7 +58,7 @@ func (mds *dataStorage) Create(
 	}
 	buf.WriteString(");")
 	fmt.Println(buf.String())
-	// db.Exec(buf.String(), vals...)
+	_, err = db.Exec(buf.String(), vals...)
 	return err
 }
 
@@ -97,7 +69,32 @@ func (mds *dataStorage) Update(
 	keyField string,
 	key interface{},
 	value interface{}) (err error) {
-	return teak.LogError("t.crud.pg", err)
+	defer func() { teak.LogErrorX("t.crud.pg", "Failed to update item", err) }()
+	hdl := teak.GetItemHandler(dtype)
+	if hdl == nil {
+		err = fmt.Errorf("Failed to get handler for data type %s", dtype)
+		return err
+	}
+	mp := teak.ToFlatMap(value, "json")
+	buf := strings.Builder{}
+	buf.WriteString("UPDATE ")
+	buf.WriteString(dtype)
+	buf.WriteString("SET ")
+	for i, propName := range hdl.PropNames() {
+		if _, has := mp[propName]; !has {
+			//We did not find the property from
+			continue
+		}
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(propName)
+	}
+	buf.WriteString(" WHERE ")
+	buf.WriteString(";")
+	fmt.Println(buf.String())
+	// _, err = db.Exec(buf.String(), vals...)
+	return err
 }
 
 //Delete - deletes record matched by the matcher from collection 'dtype'
