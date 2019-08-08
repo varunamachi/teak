@@ -17,14 +17,16 @@ func NewStorage() teak.DataStorage {
 	return &dataStorage{}
 }
 
-func (mds *dataStorage) Name() string {
+func (pg *dataStorage) Name() string {
 	return "postgres"
 }
 
 //Create - creates an record in 'dtype' collection
-func (mds *dataStorage) Create(
+func (pg *dataStorage) Create(
 	dtype string, value interface{}) (err error) {
-	defer func() { teak.LogErrorX("t.crud.pg", "Failed to create item", err) }()
+	defer func() {
+		teak.LogErrorX("t.pg.store", "Failed to create item", err)
+	}()
 	hdl := teak.GetItemHandler(dtype)
 	if hdl == nil {
 		err = fmt.Errorf("Failed to get handler for data type %s", dtype)
@@ -65,12 +67,14 @@ func (mds *dataStorage) Create(
 
 //Update - updates the records in 'dtype' collection which are matched by
 //the matcher query
-func (mds *dataStorage) Update(
+func (pg *dataStorage) Update(
 	dtype string,
 	keyField string,
 	key interface{},
 	value interface{}) (err error) {
-	defer func() { teak.LogErrorX("t.crud.pg", "Failed to update item", err) }()
+	defer func() {
+		teak.LogErrorX("t.pg.store", "Failed to update item", err)
+	}()
 	hdl := teak.GetItemHandler(dtype)
 	if hdl == nil {
 		err = fmt.Errorf("Failed to get handler for data type %s", dtype)
@@ -102,11 +106,13 @@ func (mds *dataStorage) Update(
 }
 
 //Delete - deletes record matched by the matcher from collection 'dtype'
-func (mds *dataStorage) Delete(
+func (pg *dataStorage) Delete(
 	dtype string,
 	keyField string,
 	key interface{}) (err error) {
-	defer func() { teak.LogErrorX("t.crud.pg", "Failed to delete item", err) }()
+	defer func() {
+		teak.LogErrorX("t.pg.store", "Failed to delete item", err)
+	}()
 	var buf strings.Builder
 	buf.WriteString("DELETE FROM ")
 	buf.WriteString(dtype)
@@ -118,12 +124,14 @@ func (mds *dataStorage) Delete(
 }
 
 //RetrieveOne - gets a record matched by given matcher from collection 'dtype'
-func (mds *dataStorage) RetrieveOne(
+func (pg *dataStorage) RetrieveOne(
 	dtype string,
 	keyField string,
 	key interface{},
 	out interface{}) (err error) {
-	defer func() { teak.LogErrorX("t.crud.pg", "Failed to delete item", err) }()
+	defer func() {
+		teak.LogErrorX("t.pg.store", "Failed to delete item", err)
+	}()
 	var buf strings.Builder
 	buf.WriteString("SELECT * FROM ")
 	buf.WriteString(dtype)
@@ -135,9 +143,11 @@ func (mds *dataStorage) RetrieveOne(
 }
 
 //Count - counts the number of items for data type
-func (mds *dataStorage) Count(
+func (pg *dataStorage) Count(
 	dtype string, filter *teak.Filter) (count int, err error) {
-	defer func() { teak.LogErrorX("t.crud.pg", "Failed to delete item", err) }()
+	defer func() {
+		teak.LogErrorX("t.pg.store", "Failed to delete item", err)
+	}()
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s",
 		dtype, generateSelector(filter))
 	err = db.Select(&count, query)
@@ -146,7 +156,7 @@ func (mds *dataStorage) Count(
 
 //Retrieve - gets all the items from collection 'dtype' selected by filter &
 //paged
-func (mds *dataStorage) Retrieve(
+func (pg *dataStorage) Retrieve(
 	dtype string,
 	sortFiled string,
 	offset int,
@@ -167,12 +177,12 @@ func (mds *dataStorage) Retrieve(
 	buf.WriteString(" ORDER BY ")
 	buf.WriteString(sortFiled) //Check for minus sign?? like in mongo??
 	err = db.Select(out, buf.String())
-	return teak.LogError("t.crud.pg", err)
+	return teak.LogError("t.pg.store", err)
 }
 
 //RetrieveWithCount - gets all the items from collection 'dtype' selected by
 //filter & paged also gives the total count of items selected by filter
-func (mds *dataStorage) RetrieveWithCount(
+func (pg *dataStorage) RetrieveWithCount(
 	dtype string,
 	sortField string,
 	offset int,
@@ -180,45 +190,48 @@ func (mds *dataStorage) RetrieveWithCount(
 	filter *teak.Filter,
 	out interface{}) (count int, err error) {
 	//For now this is going to be bit unoptimized - we generate selector twice
-	err = mds.Retrieve(dtype, sortField, offset, limit, filter, out)
+	err = pg.Retrieve(dtype, sortField, offset, limit, filter, out)
 	if err != nil {
 		return count, err
 	}
-	count, err = mds.Count(dtype, filter)
+	count, err = pg.Count(dtype, filter)
 	return count, err
 }
 
 //GetFilterValues - provides values associated the fields defined in filter spec
-func (mds *dataStorage) GetFilterValues(
+func (pg *dataStorage) GetFilterValues(
 	dtype string,
 	specs teak.FilterSpecList) (values teak.M, err error) {
 	//@TODO later
 	defer func() {
-		teak.LogErrorX("t.crud.pg",
+		teak.LogErrorX("t.pg.store",
 			"Failed to fetch filter values", err)
 	}()
 	///@TODO - implement
 	for _, spec := range specs {
 		switch spec.Type {
 		case teak.Prop:
+			//select distinct
 		case teak.Array:
+			//select distinct hstore?
 		case teak.Date:
-		case teak.Boolean:
-		case teak.Search:
-		case teak.Static:
+			//max-min
+		case teak.Boolean: //nothing
+		case teak.Search: //nothing
+		case teak.Static: //nothing
 		}
 	}
 	return values, err
 }
 
 //GetFilterValuesX - get values for filter based on given filter
-func (mds *dataStorage) GetFilterValuesX(
+func (pg *dataStorage) GetFilterValuesX(
 	dtype string,
 	field string,
 	specs teak.FilterSpecList,
 	filter *teak.Filter) (values teak.M, err error) {
 	defer func() {
-		teak.LogErrorX("t.crud.pg",
+		teak.LogErrorX("t.pg.store",
 			"Failed to fetch filter values", err)
 	}()
 	///@TODO - implement
@@ -237,71 +250,110 @@ func (mds *dataStorage) GetFilterValuesX(
 
 //Init - initialize the data storage - this needs to be run on each application
 //start up
-func (mds *dataStorage) Init() (err error) {
+func (pg *dataStorage) Init() (err error) {
 	return err
 }
 
 //Setup - setup has to be run when data storage structure changes, such as
 //adding index, altering tables etc
-func (mds *dataStorage) Setup(params teak.M) (err error) {
+func (pg *dataStorage) Setup(params teak.M) (err error) {
 	utq := `
 		CREATE TABLE teak_user(
-			id				CHAR(128)		PRIMARY KEY
-			email			VARCHAR(100)	NOT NULL
-			auth			INTEGER			NOT NULL
-			firstName		VARCHAR(64)		NOT NULL
-			lastName		VARCHAR(64)		
-			title			CHAR(10)		NOT NULL
-			fullName		VARCHAR(128)	NOT NULL
-			state			CHAR(10)		NOT NULL DEFAULT 'disabled'
-			verID			CHAR(38)		
-			pwdExpiry		TIMESTAMPZ
-			createdAt		TIMESTAMPZ
-			createdBy		CHAR(128)
-			modifiedAt		TIMESTAMPZ
-			modifiedBy		CHAR(128)
-			verified		BOOLEAN
+			id				CHAR(128)		PRIMARY KEY,
+			email			VARCHAR(100)	NOT NULL,
+			auth			INTEGER			NOT NULL,
+			firstName		VARCHAR(64)		NOT NULL,
+			lastName		VARCHAR(64)		,
+			title			CHAR(10)		NOT NULL,
+			fullName		VARCHAR(128)	NOT NULL,
+			state			CHAR(10)		NOT NULL DEFAULT 'disabled',
+			verID			CHAR(38),
+			pwdExpiry		TIMESTAMPZ,
+			createdAt		TIMESTAMPZ,
+			createdBy		CHAR(128),
+			modifiedAt		TIMESTAMPZ,
+			modifiedBy		CHAR(128),
+			verified		BOOLEAN,
 			props			HSTORE
 		);`
 	_, err = db.Exec(utq)
 	if err != nil {
-		return err
+		return teak.LogErrorX(
+			"t.pg.store", "Failed to create table 'teak_user'", err)
 	}
 
-	// etq := `
-	// 	CREATE TABLE teak_event(
-	// 		op			CHAR(60)
-	// 		userID		CHAR(60)
-	// 		userName	CHAR(60)
-	// 		success		CHAR(60)
-	// 		error		CHAR(60)
-	// 		time		CHAR(60)
-	// 		data		HSTORE
-	// 	)
-	// `
+	etq := `
+		CREATE TABLE teak_event(
+			id			string		PRIMARY KEY,
+			op			CHAR(60),
+			userID		CHAR(60),
+			userName	CHAR(60),
+			success		CHAR(60),
+			error		CHAR(60),
+			time		CHAR(60),
+			data		HSTORE
+		)
+	`
+	_, err = db.Exec(etq)
+	if err != nil {
+		return teak.LogErrorX(
+			"t.pg.store", "Failed to create table 'teak_event'", err)
+	}
 
-	//Create events table
-	//Create housekeeping table
+	htq := `
+		CREATE TABLE teak_internal(
+			key 	VARCHAR(100)	PRIMARY KEY,
+			value 	JSONB
+		)
+	`
+	_, err = db.Exec(htq)
+	if err != nil {
+		return teak.LogErrorX(
+			"t.pg.store", "Failed to create internal table", err)
+	}
 	return err
 }
 
 //Reset - reset clears the data without affecting the structure/schema
-func (mds *dataStorage) Reset() (err error) {
-	//Clear user table
-	//Clear events table
-	//Reset house keeping table
-
+func (pg *dataStorage) Reset() (err error) {
+	tables := []string{
+		"teak_user",
+		"teak_event",
+		// "teak_internal",
+	}
+	for _, tname := range tables {
+		query := fmt.Sprintf("DELETE FROM %s;", tname)
+		_, err = db.Exec(query)
+		if err != nil {
+			teak.Error(
+				"t.pg.store", "Failed clear data from %s: %v", tname, err)
+			//break??
+		}
+	}
 	return err
 }
 
 //Destroy - deletes data and also structure
-func (mds *dataStorage) Destroy() (err error) {
-	//Delete everything
+func (pg *dataStorage) Destroy() (err error) {
+	tables := []string{
+		"teak_user",
+		"teak_event",
+		"teak_internal",
+	}
+	for _, tname := range tables {
+		query := fmt.Sprintf("DROP TABLE %s;", tname)
+		_, err = db.Exec(query)
+		if err != nil {
+			teak.Error(
+				"t.pg.store", "Failed delete table '%s': %v", tname, err)
+			//break??
+		}
+	}
 	return err
 }
 
 //Wrap - wraps a command with flags required to connect to this data source
-func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
+func (pg *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
 	cmd.Flags = append(cmd.Flags, pgFlags...)
 	if cmd.Before == nil {
 		cmd.Before = requirePostgres
@@ -319,7 +371,7 @@ func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
 }
 
 //GetManageCommands - commands that can be used to manage this data storage
-func (mds *dataStorage) GetManageCommands() (commands []cli.Command) {
+func (pg *dataStorage) GetManageCommands() (commands []cli.Command) {
 	return commands
 }
 

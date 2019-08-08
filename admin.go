@@ -131,7 +131,7 @@ func createUserCmd() *cli.Command {
 						FullName:   first + " " + last,
 						CreatedAt:  time.Now(),
 						ModifiedAt: time.Now(),
-						Props:      M{},
+						Props:      SM{},
 						PwdExpiry:  time.Now().AddDate(1, 0, 0),
 						State:      Active,
 					}

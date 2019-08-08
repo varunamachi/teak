@@ -185,8 +185,8 @@ func createUser(ctx echo.Context) (err error) {
 	var user User
 	err = ctx.Bind(&user)
 	if err == nil {
-		user.Props = M{
-			"admin-created": true,
+		user.Props = SM{
+			"creationMode": "admin",
 		}
 		UpdateUserInfo(&user)
 		err = userStorage.CreateUser(&user)

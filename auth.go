@@ -16,6 +16,9 @@ var authorizer Authorizer
 //M - map of string to any
 type M map[string]interface{}
 
+//SM - map of string to string
+type SM map[string]string
+
 //AuthLevel - authorization of an user
 type AuthLevel int
 
@@ -68,7 +71,7 @@ type User struct {
 	ModifiedAt  time.Time `json:"modifiedAt"`
 	ModifiedBy  string    `json:"modifiedBy"`
 	VerfiedDate time.Time `json:"verified"`
-	Props       M         `json:"props"`
+	Props       SM        `json:"props"`
 }
 
 //Group - group of users
