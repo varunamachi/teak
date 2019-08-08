@@ -174,20 +174,41 @@ func (mds *dataStorage) Retrieve(
 //filter & paged also gives the total count of items selected by filter
 func (mds *dataStorage) RetrieveWithCount(
 	dtype string,
-	sortFiled string,
+	sortField string,
 	offset int,
 	limit int,
 	filter *teak.Filter,
 	out interface{}) (count int, err error) {
-
-	return count, teak.LogError("t.crud.pg", err)
+	//For now this is going to be bit unoptimized - we generate selector twice
+	err = mds.Retrieve(dtype, sortField, offset, limit, filter, out)
+	if err != nil {
+		return count, err
+	}
+	count, err = mds.Count(dtype, filter)
+	return count, err
 }
 
 //GetFilterValues - provides values associated the fields defined in filter spec
 func (mds *dataStorage) GetFilterValues(
 	dtype string,
 	specs teak.FilterSpecList) (values teak.M, err error) {
-	return values, teak.LogError("t.crud.pg", err)
+	//@TODO later
+	defer func() {
+		teak.LogErrorX("t.crud.pg",
+			"Failed to fetch filter values", err)
+	}()
+	///@TODO - implement
+	for _, spec := range specs {
+		switch spec.Type {
+		case teak.Prop:
+		case teak.Array:
+		case teak.Date:
+		case teak.Boolean:
+		case teak.Search:
+		case teak.Static:
+		}
+	}
+	return values, err
 }
 
 //GetFilterValuesX - get values for filter based on given filter
@@ -196,7 +217,22 @@ func (mds *dataStorage) GetFilterValuesX(
 	field string,
 	specs teak.FilterSpecList,
 	filter *teak.Filter) (values teak.M, err error) {
-	return values, teak.LogError("t.crud.pg", err)
+	defer func() {
+		teak.LogErrorX("t.crud.pg",
+			"Failed to fetch filter values", err)
+	}()
+	///@TODO - implement
+	for _, spec := range specs {
+		switch spec.Type {
+		case teak.Prop:
+		case teak.Array:
+		case teak.Date:
+		case teak.Boolean:
+		case teak.Search:
+		case teak.Static:
+		}
+	}
+	return values, err
 }
 
 //Init - initialize the data storage - this needs to be run on each application
@@ -208,16 +244,59 @@ func (mds *dataStorage) Init() (err error) {
 //Setup - setup has to be run when data storage structure changes, such as
 //adding index, altering tables etc
 func (mds *dataStorage) Setup(params teak.M) (err error) {
+	utq := `
+		CREATE TABLE teak_user(
+			id				CHAR(128)		PRIMARY KEY
+			email			VARCHAR(100)	NOT NULL
+			auth			INTEGER			NOT NULL
+			firstName		VARCHAR(64)		NOT NULL
+			lastName		VARCHAR(64)		
+			title			CHAR(10)		NOT NULL
+			fullName		VARCHAR(128)	NOT NULL
+			state			CHAR(10)		NOT NULL DEFAULT 'disabled'
+			verID			CHAR(38)		
+			pwdExpiry		TIMESTAMPZ
+			createdAt		TIMESTAMPZ
+			createdBy		CHAR(128)
+			modifiedAt		TIMESTAMPZ
+			modifiedBy		CHAR(128)
+			verified		BOOLEAN
+			props			HSTORE
+		);`
+	_, err = db.Exec(utq)
+	if err != nil {
+		return err
+	}
+
+	// etq := `
+	// 	CREATE TABLE teak_event(
+	// 		op			CHAR(60)
+	// 		userID		CHAR(60)
+	// 		userName	CHAR(60)
+	// 		success		CHAR(60)
+	// 		error		CHAR(60)
+	// 		time		CHAR(60)
+	// 		data		HSTORE
+	// 	)
+	// `
+
+	//Create events table
+	//Create housekeeping table
 	return err
 }
 
 //Reset - reset clears the data without affecting the structure/schema
 func (mds *dataStorage) Reset() (err error) {
+	//Clear user table
+	//Clear events table
+	//Reset house keeping table
+
 	return err
 }
 
 //Destroy - deletes data and also structure
 func (mds *dataStorage) Destroy() (err error) {
+	//Delete everything
 	return err
 }
 

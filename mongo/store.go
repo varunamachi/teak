@@ -320,6 +320,8 @@ func (mds *dataStorage) Init() (err error) {
 //Setup - setup has to be run when data storage structure changes, such as
 //adding index, altering tables etc
 func (mds *dataStorage) Setup(params teak.M) (err error) {
+	//Setup indices for user collection
+	//Setup indices for event collection
 	return err
 }
 
