@@ -23,42 +23,9 @@ func NewDefaultApp(
 	)
 }
 
-//pgFlags - flags to get postgres connection options
-var pgFlags = []cli.Flag{
-	cli.StringFlag{
-		Name:   "pg-host",
-		Value:  "localhost",
-		Usage:  "Address of the host running postgres",
-		EnvVar: "PG_HOST",
-	},
-	cli.IntFlag{
-		Name:   "pg-port",
-		Value:  5432,
-		Usage:  "Port on which postgres is listening",
-		EnvVar: "PG_PORT",
-	},
-	cli.StringFlag{
-		Name:   "pg-db",
-		Value:  "",
-		Usage:  "Database name",
-		EnvVar: "PG_DB",
-	},
-	cli.StringFlag{
-		Name:   "pg-user",
-		Value:  "",
-		Usage:  "Postgres user name",
-		EnvVar: "PG_USER",
-	},
-	cli.StringFlag{
-		Name:   "pg-pass",
-		Value:  "",
-		Usage:  "Postgres password for connection",
-		EnvVar: "PG_PASS",
-	},
-}
-
 func requirePostgres(ctx *cli.Context) (err error) {
 	defer teak.LogErrorX("t.pg", "Failed to initialize postgres", err)
+
 	ag := teak.NewArgGetter(ctx)
 	var opts ConnOpts
 	if !teak.GetConfig("postgres.opts", &opts) {
