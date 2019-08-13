@@ -149,7 +149,7 @@ func (pg *dataStorage) Count(
 	defer func() {
 		teak.LogErrorX("t.pg.store", "Failed to delete item", err)
 	}()
-	query := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s",
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s %s",
 		dtype, generateSelector(filter))
 	err = db.Select(&count, query)
 	return count, err
@@ -169,7 +169,6 @@ func (pg *dataStorage) Retrieve(
 	buf.Grow(100)
 	buf.WriteString("SELECT * FROM ")
 	buf.WriteString(dtype)
-	buf.WriteString(" WHERE ")
 	buf.WriteString(selector)
 	buf.WriteString(" OFFSET ")
 	buf.WriteString(strconv.Itoa(offset))
@@ -415,5 +414,6 @@ func (pg *dataStorage) GetManageCommands() (commands []cli.Command) {
 }
 
 func generateSelector(filter *teak.Filter) (selector string) {
+	//Will have to generate WHERE keyword if the filter is not empty
 	return selector
 }

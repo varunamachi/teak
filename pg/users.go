@@ -17,32 +17,102 @@ func NewUserStorage() teak.UserStorage {
 
 //CreateUser - creates user in database
 func (m *userStorage) CreateUser(user *teak.User) (err error) {
+	query := `
+		INSERT INTO teak_user(
+			id,
+			email,
+			auth,
+			firstName,
+			lastName,
+			title,
+			fullName,
+			state,
+			verID,
+			pwdExpiry,
+			createdAt,
+			createdBy,
+			modifiedAt,
+			modifiedBy,
+			verified,
+			props
+		) VALUES (
+			:id
+			:email
+			:auth
+			:firstName
+			:lastName
+			:title
+			:fullName
+			:state
+			:verID
+			:pwdExpiry
+			:createdAt
+			:createdBy
+			:modifiedAt
+			:modifiedBy
+			:verified
+			:props
+		)
+	`
+	_, err = db.NamedExec(query, user)
 	return teak.LogError("t.user.pg", err)
 }
 
 //UpdateUser - updates user in database
 func (m *userStorage) UpdateUser(user *teak.User) (err error) {
+	query := `
+		UPDATE teak_user SET 
+			email = :email,
+			auth = :auth,
+			firstName = :firstName,
+			lastName = :lastName,
+			title = :title,
+			fullName = :fullName,
+			state = :state,
+			verID = :verID,
+			pwdExpiry = :pwdExpiry,
+			createdAt = :createdAt,
+			createdBy = :createdBy,
+			modifiedAt = :modifiedAt,
+			modifiedBy = :modifiedBy,
+			verified = :verified,
+			props = :props
+		WHERE id = :id
+	`
+	_, err = db.NamedExec(query, user)
 	return teak.LogError("t.user.pg", err)
 }
 
 //DeleteUser - deletes user with given user ID
 func (m *userStorage) DeleteUser(userID string) (err error) {
+	query := `DELETE FROM teak_user WHERE id = ?`
+	_, err = db.Exec(query, userID)
 	return teak.LogError("t.user.pg", err)
 }
 
 //GetUser - gets details of the user corresponding to ID
 func (m *userStorage) GetUser(userID string) (user *teak.User, err error) {
+	user = &teak.User{}
+	query := `SELECT * FROM teak_user WHERE id = ?`
+	db.Select(user, query, userID)
 	return user, teak.LogError("t.user.pg", err)
 }
 
 //GetUsers - gets all users based on offset, limit and filter
 func (m *userStorage) GetUsers(offset, limit int, filter *teak.Filter) (
 	users []*teak.User, err error) {
+	users = make([]*teak.User, 0, limit)
+	selector := generateSelector(filter)
+	query := `SELECT * FROM teak_users ` + selector
+	err = db.Select(users, query, nil)
 	return users, teak.LogError("t.user.pg", err)
 }
 
 //GetCount - gives the number of user selected by given filter
 func (m *userStorage) GetCount(filter *teak.Filter) (count int, err error) {
+	selector := generateSelector(filter)
+	query := `SELECT COUNT(*) FROM teak_user ` + selector
+	err = db.Select(&count, query)
 	return count, teak.LogError("t.user.pg", err)
 }
 
@@ -50,7 +120,20 @@ func (m *userStorage) GetCount(filter *teak.Filter) (count int, err error) {
 func (m *userStorage) GetUsersWithCount(
 	offset, limit int, filter *teak.Filter) (
 	total int, users []*teak.User, err error) {
-	return total, users, teak.LogError("t.user.pg", err)
+	defer func() {
+		teak.LogErrorX("t.user.pg",
+			"Error getting count and list", err)
+	}()
+	selector := generateSelector(filter)
+	get := `SELECT * FROM teak_user ` + selector
+	count := `SELECT COUNT(*) FROM teak_user ` + selector
+	users = make([]*teak.User, 0, limit)
+	err = db.Select(users, get, nil)
+	if err != nil {
+		return
+	}
+	err = db.Select(&total, count, nil)
+	return total, users, err
 }
 
 //ResetPassword - sets password of a unauthenticated user
