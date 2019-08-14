@@ -257,8 +257,8 @@ func (pg *dataStorage) Init() (err error) {
 //Setup - setup has to be run when data storage structure changes, such as
 //adding index, altering tables etc
 func (pg *dataStorage) Setup(params teak.M) (err error) {
-	utq := `
-		CREATE TABLE teak_user(
+	queries := map[string]string{
+		"teak_user": `CREATE TABLE teak_user(
 			id				CHAR(128)		PRIMARY KEY,
 			email			VARCHAR(100)	NOT NULL,
 			auth			INTEGER			NOT NULL,
@@ -275,15 +275,13 @@ func (pg *dataStorage) Setup(params teak.M) (err error) {
 			modifiedBy		CHAR(128),
 			verified		BOOLEAN,
 			props			HSTORE
-		);`
-	_, err = db.Exec(utq)
-	if err != nil {
-		return teak.LogErrorX(
-			"t.pg.store", "Failed to create table 'teak_user'", err)
-	}
-
-	etq := `
-		CREATE TABLE teak_event(
+		);`,
+		"user_secret": `CREATE TABLE user_secret(
+			userID  	CHAR(128)		PRIMARY KEY,
+			phash		VARCHAR(256),
+			FOREIGN KEY userID REFERENCES teak_user(id) ON DELETE CASCADE
+		)`,
+		"teak_event": `CREATE TABLE teak_event(
 			id			string		PRIMARY KEY,
 			op			CHAR(60),
 			userID		CHAR(60),
@@ -292,24 +290,19 @@ func (pg *dataStorage) Setup(params teak.M) (err error) {
 			error		CHAR(60),
 			time		CHAR(60),
 			data		HSTORE
-		)
-	`
-	_, err = db.Exec(etq)
-	if err != nil {
-		return teak.LogErrorX(
-			"t.pg.store", "Failed to create table 'teak_event'", err)
+		)`,
+		"teak_internal": `CREATE TABLE teak_internal(
+				key 	VARCHAR(100)	PRIMARY KEY,
+				value 	JSONB
+		)`,
 	}
-
-	htq := `
-		CREATE TABLE teak_internal(
-			key 	VARCHAR(100)	PRIMARY KEY,
-			value 	JSONB
-		)
-	`
-	_, err = db.Exec(htq)
-	if err != nil {
-		return teak.LogErrorX(
-			"t.pg.store", "Failed to create internal table", err)
+	for name, query := range queries {
+		_, err = db.Exec(query)
+		if err != nil {
+			err = teak.LogErrorX("t.pg.store", "Failed to create table '%s'",
+				err, name)
+			break
+		}
 	}
 	return err
 }
@@ -319,7 +312,7 @@ func (pg *dataStorage) Reset() (err error) {
 	tables := []string{
 		"teak_user",
 		"teak_event",
-		// "teak_internal",
+		"user_secret",
 	}
 	for _, tname := range tables {
 		query := fmt.Sprintf("DELETE FROM %s;", tname)

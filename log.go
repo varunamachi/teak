@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 //Level - gives log level
@@ -146,11 +148,12 @@ func Warn(module, fmtStr string, args ...interface{}) {
 }
 
 //Error - error logs
-func Error(module, fmtStr string, args ...interface{}) {
+func Error(module, fmtStr string, args ...interface{}) (err error) {
+	err = fmt.Errorf(fmtStr, args...)
 	if ErrorLevel >= lconf.FilterLevel {
-		lconf.Logger.Log(ErrorLevel, module, fmtStr, args...)
-		// Print(module, fmtStr, args...)
+		lconf.Logger.Log(ErrorLevel, module, err.Error())
 	}
+	return err
 }
 
 //Fatal - error logs
@@ -174,15 +177,17 @@ func LogError(module string, err error) error {
 }
 
 //LogErrorX - log error with a message
-func LogErrorX(module, msg string, err error) error {
+func LogErrorX(module, msg string, err error, args ...interface{}) error {
+
 	if err != nil && ErrorLevel >= lconf.FilterLevel {
+		expdMsg := fmt.Sprintf(msg, args...)
 		_, file, line, _ := runtime.Caller(1)
 		lconf.Logger.Log(ErrorLevel, module, "%s -- %s. @ %s:%d",
-			msg,
+			expdMsg,
 			err.Error(),
 			file,
 			line)
-		// LogJSON(ErrorLevel, module, err)
+		err = errors.Wrap(err, expdMsg)
 	}
 	return err
 }

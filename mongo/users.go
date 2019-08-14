@@ -264,9 +264,9 @@ func (m *userStorage) VerifyUser(userID, verID string) (err error) {
 		},
 		bson.M{
 			"$set": bson.M{
-				"state":    teak.Active,
-				"verified": time.Now(),
-				"varfnID":  "",
+				"state":      teak.Active,
+				"verifiedAt": time.Now(),
+				"verID":      "",
 			},
 		})
 	return teak.LogError("UMan:Mongo", err)

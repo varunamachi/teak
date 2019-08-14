@@ -56,22 +56,22 @@ var Flagged UserState = "flagged"
 
 //User - represents an user
 type User struct {
-	ID          string    `json:"id"`
-	Email       string    `json:"email"`
-	Auth        AuthLevel `json:"auth"`
-	FirstName   string    `json:"firstName"`
-	LastName    string    `json:"lastName"`
-	Title       string    `json:"title"`
-	FullName    string    `json:"fullName"`
-	State       UserState `json:"state"`
-	VerID       string    `json:"verID"`
-	PwdExpiry   time.Time `json:"pwdExpiry"`
-	CreatedAt   time.Time `json:"createdAt"`
-	CreatedBy   string    `json:"createdBy"`
-	ModifiedAt  time.Time `json:"modifiedAt"`
-	ModifiedBy  string    `json:"modifiedBy"`
-	VerfiedDate time.Time `json:"verified"`
-	Props       SM        `json:"props"`
+	ID         string    `json:"id"`
+	Email      string    `json:"email"`
+	Auth       AuthLevel `json:"auth"`
+	FirstName  string    `json:"firstName"`
+	LastName   string    `json:"lastName"`
+	Title      string    `json:"title"`
+	FullName   string    `json:"fullName"`
+	State      UserState `json:"state"`
+	VerID      string    `json:"verID"`
+	PwdExpiry  time.Time `json:"pwdExpiry"`
+	CreatedAt  time.Time `json:"createdAt"`
+	CreatedBy  string    `json:"createdBy"`
+	ModifiedAt time.Time `json:"modifiedAt"`
+	ModifiedBy string    `json:"modifiedBy"`
+	VerfiedAt  time.Time `json:"verifiedAt"`
+	Props      SM        `json:"props"`
 }
 
 //Group - group of users

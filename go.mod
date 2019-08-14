@@ -10,6 +10,7 @@ require (
 	github.com/labstack/echo/v4 v4.1.6
 	github.com/lib/pq v1.0.0
 	github.com/mitchellh/mapstructure v1.1.2
+	github.com/pkg/errors v0.8.1
 	github.com/satori/go.uuid v1.2.0
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
