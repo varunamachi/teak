@@ -54,7 +54,7 @@ func (m *userStorage) CreateUser(user *teak.User) (err error) {
 			:props
 		)
 	`
-	_, err = db.NamedExec(query, user)
+	_, err = defDB.NamedExec(query, user)
 	return teak.LogError("t.user.pg", err)
 }
 
@@ -79,14 +79,14 @@ func (m *userStorage) UpdateUser(user *teak.User) (err error) {
 			props = :props
 		WHERE id = :id
 	`
-	_, err = db.NamedExec(query, user)
+	_, err = defDB.NamedExec(query, user)
 	return teak.LogError("t.user.pg", err)
 }
 
 //DeleteUser - deletes user with given user ID
 func (m *userStorage) DeleteUser(userID string) (err error) {
 	query := `DELETE FROM teak_user WHERE id = ?`
-	_, err = db.Exec(query, userID)
+	_, err = defDB.Exec(query, userID)
 	return teak.LogErrorX("t.user.pg", "Failed to delete user with id %s",
 		err, userID)
 }
@@ -95,7 +95,7 @@ func (m *userStorage) DeleteUser(userID string) (err error) {
 func (m *userStorage) GetUser(userID string) (user *teak.User, err error) {
 	user = &teak.User{}
 	query := `SELECT * FROM teak_user WHERE id = ?`
-	db.Select(user, query, userID)
+	defDB.Select(user, query, userID)
 	return user, teak.LogError("t.user.pg", err)
 }
 
@@ -105,7 +105,7 @@ func (m *userStorage) GetUsers(offset, limit int, filter *teak.Filter) (
 	users = make([]*teak.User, 0, limit)
 	selector := generateSelector(filter)
 	query := `SELECT * FROM teak_users ` + selector
-	err = db.Select(users, query, nil)
+	err = defDB.Select(users, query, nil)
 	return users, teak.LogError("t.user.pg", err)
 }
 
@@ -113,7 +113,7 @@ func (m *userStorage) GetUsers(offset, limit int, filter *teak.Filter) (
 func (m *userStorage) GetCount(filter *teak.Filter) (count int, err error) {
 	selector := generateSelector(filter)
 	query := `SELECT COUNT(*) FROM teak_user ` + selector
-	err = db.Select(&count, query)
+	err = defDB.Select(&count, query)
 	return count, teak.LogError("t.user.pg", err)
 }
 
@@ -129,11 +129,11 @@ func (m *userStorage) GetUsersWithCount(
 	get := `SELECT * FROM teak_user ` + selector
 	count := `SELECT COUNT(*) FROM teak_user ` + selector
 	users = make([]*teak.User, 0, limit)
-	err = db.Select(users, get, nil)
+	err = defDB.Select(users, get, nil)
 	if err != nil {
 		return
 	}
-	err = db.Select(&total, count, nil)
+	err = defDB.Select(&total, count, nil)
 	return total, users, err
 }
 
@@ -166,7 +166,7 @@ func (m *userStorage) SetPassword(userID, newPwd string) (err error) {
 			ON CONFLICT DO UPDATE
 				SET phash = EXCLUDED.phash
 	`
-	_, err = db.Exec(query, userID, newHash)
+	_, err = defDB.Exec(query, userID, newHash)
 	return err
 }
 
@@ -177,7 +177,7 @@ func (m *userStorage) ValidateUser(userID, password string) (err error) {
 			"Failed to validate user with id %s", err, userID)
 	}()
 	var phash string
-	err = db.Select(&phash,
+	err = defDB.Select(&phash,
 		`SELECT phash FROM user_secret WHERE userID = ?`, userID)
 	if err != nil {
 		return err
@@ -187,14 +187,14 @@ func (m *userStorage) ValidateUser(userID, password string) (err error) {
 		return err
 	}
 	query := `UPDATE user_secret SET phash = ? WHERE userID = ?`
-	_, err = db.Exec(query, newHash, userID)
+	_, err = defDB.Exec(query, newHash, userID)
 	return err
 }
 
 //GetUserAuthLevel - gets user authorization level
 func (m *userStorage) GetUserAuthLevel(
 	userID string) (level teak.AuthLevel, err error) {
-	err = db.Select(&level, `SELECT auth FROM teak_user WHERE id = ?`, userID)
+	err = defDB.Select(&level, `SELECT auth FROM teak_user WHERE id = ?`, userID)
 	return level, teak.LogErrorX("t.user.pg",
 		"Failed to retrieve auth level for '%s'", err, userID)
 }
@@ -203,7 +203,7 @@ func (m *userStorage) GetUserAuthLevel(
 func (m *userStorage) CreateSuperUser(
 	user *teak.User, password string) (err error) {
 	numSuper := 0
-	err = db.Select(&numSuper, "SELECT COUNT(*) FROM teak_user WHERE auth = 0")
+	err = defDB.Select(&numSuper, "SELECT COUNT(*) FROM teak_user WHERE auth = 0")
 	if err != nil {
 		err = teak.LogErrorX("t.user.pg",
 			"Failed to get number of super admins", err)
@@ -214,7 +214,7 @@ func (m *userStorage) CreateSuperUser(
 		return err
 	}
 	query := `UPDATE teak_user SET auth = 0 WHERE id = ?`
-	_, err = db.Exec(query, user.ID)
+	_, err = defDB.Exec(query, user.ID)
 	if err != nil {
 		err = teak.LogErrorX("t.user.pg",
 			"Failed to set super user role to %s", err, user.FullName)
@@ -225,7 +225,7 @@ func (m *userStorage) CreateSuperUser(
 //SetUserState - sets state of an user account
 func (m *userStorage) SetUserState(
 	userID string, state teak.UserState) (err error) {
-	_, err = db.Exec("UPDATE teak_user SET state = ? WHERE id = ?",
+	_, err = defDB.Exec("UPDATE teak_user SET state = ? WHERE id = ?",
 		userID, state)
 	return teak.LogErrorX("t.user.pg",
 		"Failed to update state for user with ID '%s'", err, userID)
@@ -241,14 +241,14 @@ func (m *userStorage) VerifyUser(userID, verID string) (err error) {
 			verID = ""
 		WHERE id = ? AND verID = ?
 	`
-	_, err = db.Exec(query, teak.Active, time.Now(), userID, verID)
+	_, err = defDB.Exec(query, teak.Active, time.Now(), userID, verID)
 	return teak.LogErrorX("t.user.pg", "Failed to verify user with id %s",
 		err, userID)
 }
 
 //CleanData - cleans user management related data from database
 func (m *userStorage) CleanData() (err error) {
-	_, err = db.Exec(`DELETE FROM teak_user`)
+	_, err = defDB.Exec(`DELETE FROM teak_user`)
 	return teak.LogErrorX("t.user.pg",
 		"Failed to delete all user accounts", err)
 
@@ -268,7 +268,7 @@ func (m *userStorage) UpdateProfile(user *teak.User) (err error) {
 			modifiedBy = ?
 		WHERE id = ?
 	`
-	_, err = db.Exec(query,
+	_, err = defDB.Exec(query,
 		user.Email,
 		user.FirstName,
 		user.LastName,

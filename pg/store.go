@@ -62,7 +62,7 @@ func (pg *dataStorage) Create(
 	}
 	buf.WriteString(");")
 	// fmt.Println(buf.String())
-	_, err = db.Exec(buf.String(), vals...)
+	_, err = defDB.Exec(buf.String(), vals...)
 	return err
 }
 
@@ -102,7 +102,7 @@ func (pg *dataStorage) Update(
 	buf.WriteString(" = ?;")
 	vals = append(vals, key)
 	// fmt.Println(buf.String())
-	_, err = db.Exec(buf.String(), vals...)
+	_, err = defDB.Exec(buf.String(), vals...)
 	return err
 }
 
@@ -120,7 +120,7 @@ func (pg *dataStorage) Delete(
 	buf.WriteString(" WHERE ")
 	buf.WriteString(keyField)
 	buf.WriteString(" = ?;")
-	_, err = db.Exec(buf.String(), key)
+	_, err = defDB.Exec(buf.String(), key)
 	return err
 }
 
@@ -139,7 +139,7 @@ func (pg *dataStorage) RetrieveOne(
 	buf.WriteString(" WHERE ")
 	buf.WriteString(keyField)
 	buf.WriteString(" = ?;")
-	err = db.Select(out, buf.String(), key)
+	err = defDB.Select(out, buf.String(), key)
 	return err
 }
 
@@ -151,7 +151,7 @@ func (pg *dataStorage) Count(
 	}()
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s %s",
 		dtype, generateSelector(filter))
-	err = db.Select(&count, query)
+	err = defDB.Select(&count, query)
 	return count, err
 }
 
@@ -176,7 +176,7 @@ func (pg *dataStorage) Retrieve(
 	buf.WriteString(strconv.Itoa(limit))
 	buf.WriteString(" ORDER BY ")
 	buf.WriteString(sortFiled) //Check for minus sign?? like in mongo??
-	err = db.Select(out, buf.String())
+	err = defDB.Select(out, buf.String())
 	return teak.LogError("t.pg.store", err)
 }
 
@@ -297,7 +297,7 @@ func (pg *dataStorage) Setup(params teak.M) (err error) {
 		)`,
 	}
 	for name, query := range queries {
-		_, err = db.Exec(query)
+		_, err = defDB.Exec(query)
 		if err != nil {
 			err = teak.LogErrorX("t.pg.store", "Failed to create table '%s'",
 				err, name)
@@ -316,7 +316,7 @@ func (pg *dataStorage) Reset() (err error) {
 	}
 	for _, tname := range tables {
 		query := fmt.Sprintf("DELETE FROM %s;", tname)
-		_, err = db.Exec(query)
+		_, err = defDB.Exec(query)
 		if err != nil {
 			teak.Error(
 				"t.pg.store", "Failed clear data from %s: %v", tname, err)
@@ -335,7 +335,7 @@ func (pg *dataStorage) Destroy() (err error) {
 	}
 	for _, tname := range tables {
 		query := fmt.Sprintf("DROP TABLE %s;", tname)
-		_, err = db.Exec(query)
+		_, err = defDB.Exec(query)
 		if err != nil {
 			teak.Error(
 				"t.pg.store", "Failed delete table '%s': %v", tname, err)

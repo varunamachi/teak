@@ -38,13 +38,13 @@ func requirePostgres(ctx *cli.Context) (err error) {
 		teak.Info("t.pg", "Read postgresql options from app config")
 		opts.Host = ag.GetStringOr("pg-host", opts.Host)
 		opts.Port = ag.GetIntOr("pg-port", opts.Port)
-		opts.User = ag.GetStringOr("pg-user", opts.User)
+		opts.User = ag.GetStringOr("pg-user", opts.User) 
 		opts.DBName = ag.GetStringOr("pg-db", opts.User)
 		opts.Password = ag.GetSecretOr("pg-pass", opts.Password)
 	}
-	err = ConnectWithOpts(&opts)
+	err = ConnectWithOpts(&opts) 
 
-	if err = db.Ping(); err != nil {
+	if err = defDB.Ping(); err != nil {
 		teak.LogFatal("t.pg", err)
 	} else {
 		teak.Info("t.pg", "Connected to postgres server at %s:%d",

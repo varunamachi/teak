@@ -9,7 +9,8 @@ import (
 	"github.com/varunamachi/teak"
 )
 
-var db *sqlx.DB
+var defDB *sqlx.DB
+var conns map[string]*sqlx.DB
 
 //ConnOpts - postgres connection options
 type ConnOpts struct {
@@ -31,22 +32,42 @@ func (c *ConnOpts) String() string {
 		c.DBName)
 }
 
-//Connect - connect to postgres db with given connection string
-func Connect(optStr string) (err error) {
+//Connect - connects to DB based on connection string
+func Connect(optStr string) (db *sqlx.DB, err error) {
 	defer teak.LogErrorX("t.pg", "Failed to connect to postgres", err)
 	db, err = sqlx.Open("postgres", optStr)
 	if err == nil {
-		db.Mapper = reflectx.NewMapperFunc("json", strings.ToLower)
+		defDB.Mapper = reflectx.NewMapperFunc("json", strings.ToLower)
 	}
-	return err
+	return db, err
 }
 
 //ConnectWithOpts - connect to postgresdb based on given options
-func ConnectWithOpts(opts *ConnOpts) (err error) {
+func ConnectWithOpts(opts *ConnOpts) (db *sqlx.DB, err error) {
 	return Connect(opts.String())
 }
 
-//Conn - gives connection to database
+//NamedConn - gives connection to database associated with given name. If no
+//connection exists with given name nil is returned. If name is empty default
+//connection is returned
+func NamedConn(name string) *sqlx.DB {
+	if name == "" {
+		return defDB
+	}
+	return conns[name]
+}
+
+//SetNamedConn - register a postgres connection against name
+func SetNamedConn(name string, db *sqlx.DB) {
+	conns[name] = db
+}
+
+//SetDefaultConn - sets the default postgres connection
+func SetDefaultConn(db *sqlx.DB) {
+	defDB = db
+}
+
+//Conn - Gives default connection
 func Conn() *sqlx.DB {
-	return db
+	return defDB
 }
