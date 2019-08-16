@@ -52,7 +52,6 @@ var mongoFlags = []cli.Flag{
 }
 
 func requireMongo(ctx *cli.Context) (err error) {
-	defer teak.LogErrorX("t.mongo", "Failed to initialize mongoDB", err)
 	ag := teak.NewArgGetter(ctx)
 	var opts ConnOpts
 	if !teak.GetConfig("mongo.opts", &opts) {
@@ -71,10 +70,13 @@ func requireMongo(ctx *cli.Context) (err error) {
 	}
 	err = ConnectSingle(&opts)
 	if err != nil {
-		teak.LogFatal("t.pg", err)
-	} else {
-		teak.Info("t.mongo", "Connected to mongoDB server at %s:%d",
-			opts.Host, opts.Port)
+		err = teak.LogErrorX("t.pg",
+			"Failed to open MongoDB connection to '%s'",
+			err,
+			opts.Host)
+		return err
 	}
+	teak.Info("t.mongo", "Connected to mongoDB server at %s:%d",
+		opts.Host, opts.Port)
 	return err
 }
