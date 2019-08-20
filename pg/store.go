@@ -273,7 +273,7 @@ func (pg *dataStorage) Setup(params teak.M) (err error) {
 			createdBy		CHAR(128),
 			modifiedAt		TIMESTAMPZ,
 			modifiedBy		CHAR(128),
-			verified		BOOLEAN,
+			verifiedAt		TIMESTAMPZ,
 			props			HSTORE
 		);`,
 		"user_secret": `CREATE TABLE user_secret(

@@ -33,7 +33,7 @@ func (m *userStorage) CreateUser(user *teak.User) (err error) {
 			createdBy,
 			modifiedAt,
 			modifiedBy,
-			verified,
+			verifiedAt,
 			props
 		) VALUES (
 			:id
@@ -50,7 +50,7 @@ func (m *userStorage) CreateUser(user *teak.User) (err error) {
 			:createdBy
 			:modifiedAt
 			:modifiedBy
-			:verified
+			:verifiedAt
 			:props
 		)
 	`
@@ -75,7 +75,7 @@ func (m *userStorage) UpdateUser(user *teak.User) (err error) {
 			createdBy = :createdBy,
 			modifiedAt = :modifiedAt,
 			modifiedBy = :modifiedBy,
-			verified = :verified,
+			verifiedAt = :verifiedAt,
 			props = :props
 		WHERE id = :id
 	`
@@ -202,23 +202,27 @@ func (m *userStorage) GetUserAuthLevel(
 //CreateSuperUser - creates the first super user for the application
 func (m *userStorage) CreateSuperUser(
 	user *teak.User, password string) (err error) {
-	numSuper := 0
-	err = defDB.Select(&numSuper, "SELECT COUNT(*) FROM teak_user WHERE auth = 0")
-	if err != nil {
-		err = teak.LogErrorX("t.user.pg",
-			"Failed to get number of super admins", err)
-		return err
-	}
-	if numSuper >= 5 {
-		err = teak.Error("t.user.pg", "Maximum limit for super admins reached")
-		return err
-	}
-	query := `UPDATE teak_user SET auth = 0 WHERE id = ?`
-	_, err = defDB.Exec(query, user.ID)
-	if err != nil {
-		err = teak.LogErrorX("t.user.pg",
-			"Failed to set super user role to %s", err, user.FullName)
-	}
+	///Todo change this interface to set role...
+	///If role is super add extra validations
+
+	// numSuper := 0
+	// err = defDB.Select(&numSuper,
+	// 		"SELECT COUNT(*) FROM teak_user WHERE auth = 0")
+	// if err != nil {
+	// 	err = teak.LogErrorX("t.user.pg",
+	// 		"Failed to get number of super admins", err)
+	// 	return err
+	// }
+	// if numSuper >= 5 {
+	// 	err = teak.Error("t.user.pg", "Maximum limit for super admins reached")
+	// 	return err
+	// }
+	// query := `UPDATE teak_user SET auth = 0 WHERE id = ?`
+	// _, err = defDB.Exec(query, user.ID)
+	// if err != nil {
+	// 	err = teak.LogErrorX("t.user.pg",
+	// 		"Failed to set super user role to %s", err, user.FullName)
+	// }
 	return err
 }
 
@@ -231,13 +235,13 @@ func (m *userStorage) SetUserState(
 		"Failed to update state for user with ID '%s'", err, userID)
 }
 
-//VerifyUser - sets state of an user account to verified based on userID
+//VerifyUser - sets state of an user account to verifiedAt based on userID
 //and verification ID
 func (m *userStorage) VerifyUser(userID, verID string) (err error) {
 	query := `
 		UPDATE teak_user SET 
 			state = ?, 
-			verified = ?, 
+			verifiedAt = ?, 
 			verID = ""
 		WHERE id = ? AND verID = ?
 	`

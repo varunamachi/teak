@@ -135,10 +135,28 @@ func createUserCmd() *cli.Command {
 						PwdExpiry:  time.Now().AddDate(1, 0, 0),
 						State:      Active,
 					}
-					err = userStorage.CreateSuperUser(&user, one)
+					err = userStorage.CreateUser(&user)
+					if err != nil {
+						//wrap
+						return err
+					}
+					err = userStorage.SetPassword(id, one)
 				}
 			}
 			return err
+		},
+	}
+}
+
+func initCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "init",
+		Usage: "Initialize application",
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name:  "reinit",
+				Usage: "Remove everything and reinitialize [Not supported yet]",
+			},
 		},
 	}
 }

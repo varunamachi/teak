@@ -37,7 +37,7 @@ func Connect(optStr string) (db *sqlx.DB, err error) {
 	defer teak.LogErrorX("t.pg", "Failed to connect to postgres", err)
 	db, err = sqlx.Open("postgres", optStr)
 	if err == nil {
-		defDB.Mapper = reflectx.NewMapperFunc("json", strings.ToLower)
+		db.Mapper = reflectx.NewMapperFunc("json", strings.ToLower)
 	}
 	return db, err
 }
