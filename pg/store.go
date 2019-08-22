@@ -410,3 +410,15 @@ func generateSelector(filter *teak.Filter) (selector string) {
 	//Will have to generate WHERE keyword if the filter is not empty
 	return selector
 }
+
+func (pg *dataStorage) hasTable(tableName string) (yes bool, err error) {
+	tables := make([]string, 0, 1)
+	err = defDB.Select(tables,
+		`SELECT table_name FROM information_schema.tables 
+			WHERE table_schema = 'public' AND table_name = ? LIMIT 1`,
+		tableName)
+	if err == nil && len(tables) > 0 {
+		yes = true
+	}
+	return yes, err
+}

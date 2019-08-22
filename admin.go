@@ -158,6 +158,11 @@ func initCmd() *cli.Command {
 				Usage: "Remove everything and reinitialize [Not supported yet]",
 			},
 		},
+		Action: func(ctx *cli.Context) (err error) {
+			//make sure app is not already initialized
+			//Then call setup on modules without needing any account
+			return err
+		},
 	}
 }
 
