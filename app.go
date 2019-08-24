@@ -91,9 +91,9 @@ func NewApp(
 	authenticator = authtr
 	authorizer = authzr
 	userStorage = uStorage
-	if err := dataStorage.Init(); err != nil {
-		Fatal("t.app.dataStore", "Failed to initilize application store")
-	}
+	// if err := dataStorage.Init(); err != nil {
+	// 	Fatal("t.app.dataStore", "Failed to initilize application store")
+	// }
 	InitLogger(LoggerConfig{
 		Logger:      NewDirectLogger(),
 		LogConsole:  true,
@@ -135,7 +135,8 @@ func NewApp(
 			&UserHandler{},
 		},
 		Initialize: func(app *App) error {
-			return dataStorage.Init()
+			// return dataStorage.Init()
+			return nil
 		},
 		Setup: func(app *App) error {
 			return dataStorage.Setup(nil)

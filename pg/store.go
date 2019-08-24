@@ -248,55 +248,68 @@ func (pg *dataStorage) GetFilterValuesX(
 	return values, err
 }
 
-//Init - initialize the data storage - this needs to be run on each application
-//start up
-func (pg *dataStorage) Init() (err error) {
+//Init - initialize the data storage for the first time, sets it upda and also
+//creates the first admin user. Data store can be initialized only once
+func (pg *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
+	err error) {
+	val, err := pg.IsInitialized()
+	if err != nil {
+		err = teak.LogErrorX("t.pg.store",
+			"Failed to initialize data store", err)
+		return err
+	}
+	if val {
+		teak.Info("t.pg.store", "Store already initialized")
+		return err
+	}
+	err = pg.Setup(teak.M{})
 	return err
+}
+
+var tables = map[string]string{
+	"teak_user": `CREATE TABLE teak_user(
+		id				CHAR(128)		PRIMARY KEY,
+		email			VARCHAR(100)	NOT NULL,
+		auth			INTEGER			NOT NULL,
+		firstName		VARCHAR(64)		NOT NULL,
+		lastName		VARCHAR(64)		,
+		title			CHAR(10)		NOT NULL,
+		fullName		VARCHAR(128)	NOT NULL,
+		state			CHAR(10)		NOT NULL DEFAULT 'disabled',
+		verID			CHAR(38),
+		pwdExpiry		TIMESTAMPZ,
+		createdAt		TIMESTAMPZ,
+		createdBy		CHAR(128),
+		modifiedAt		TIMESTAMPZ,
+		modifiedBy		CHAR(128),
+		verifiedAt		TIMESTAMPZ,
+		props			HSTORE
+	);`,
+	"user_secret": `CREATE TABLE user_secret(
+		userID  	CHAR(128)		PRIMARY KEY,
+		phash		VARCHAR(256),
+		FOREIGN KEY userID REFERENCES teak_user(id) ON DELETE CASCADE
+	)`,
+	"teak_event": `CREATE TABLE teak_event(
+		id			string		PRIMARY KEY,
+		op			CHAR(60),
+		userID		CHAR(60),
+		userName	CHAR(60),
+		success		CHAR(60),
+		error		CHAR(60),
+		time		CHAR(60),
+		data		HSTORE
+	)`,
+	"teak_internal": `CREATE TABLE teak_internal(
+			key 	VARCHAR(100)	PRIMARY KEY,
+			value 	JSONB
+	)`,
 }
 
 //Setup - setup has to be run when data storage structure changes, such as
 //adding index, altering tables etc
 func (pg *dataStorage) Setup(params teak.M) (err error) {
-	queries := map[string]string{
-		"teak_user": `CREATE TABLE teak_user(
-			id				CHAR(128)		PRIMARY KEY,
-			email			VARCHAR(100)	NOT NULL,
-			auth			INTEGER			NOT NULL,
-			firstName		VARCHAR(64)		NOT NULL,
-			lastName		VARCHAR(64)		,
-			title			CHAR(10)		NOT NULL,
-			fullName		VARCHAR(128)	NOT NULL,
-			state			CHAR(10)		NOT NULL DEFAULT 'disabled',
-			verID			CHAR(38),
-			pwdExpiry		TIMESTAMPZ,
-			createdAt		TIMESTAMPZ,
-			createdBy		CHAR(128),
-			modifiedAt		TIMESTAMPZ,
-			modifiedBy		CHAR(128),
-			verifiedAt		TIMESTAMPZ,
-			props			HSTORE
-		);`,
-		"user_secret": `CREATE TABLE user_secret(
-			userID  	CHAR(128)		PRIMARY KEY,
-			phash		VARCHAR(256),
-			FOREIGN KEY userID REFERENCES teak_user(id) ON DELETE CASCADE
-		)`,
-		"teak_event": `CREATE TABLE teak_event(
-			id			string		PRIMARY KEY,
-			op			CHAR(60),
-			userID		CHAR(60),
-			userName	CHAR(60),
-			success		CHAR(60),
-			error		CHAR(60),
-			time		CHAR(60),
-			data		HSTORE
-		)`,
-		"teak_internal": `CREATE TABLE teak_internal(
-				key 	VARCHAR(100)	PRIMARY KEY,
-				value 	JSONB
-		)`,
-	}
-	for name, query := range queries {
+	for name, query := range tables {
 		_, err = defDB.Exec(query)
 		if err != nil {
 			err = teak.LogErrorX("t.pg.store", "Failed to create table '%s'",
@@ -309,12 +322,7 @@ func (pg *dataStorage) Setup(params teak.M) (err error) {
 
 //Reset - reset clears the data without affecting the structure/schema
 func (pg *dataStorage) Reset() (err error) {
-	tables := []string{
-		"teak_user",
-		"teak_event",
-		"user_secret",
-	}
-	for _, tname := range tables {
+	for tname := range tables {
 		query := fmt.Sprintf("DELETE FROM %s;", tname)
 		_, err = defDB.Exec(query)
 		if err != nil {
@@ -328,12 +336,7 @@ func (pg *dataStorage) Reset() (err error) {
 
 //Destroy - deletes data and also structure
 func (pg *dataStorage) Destroy() (err error) {
-	tables := []string{
-		"teak_user",
-		"teak_event",
-		"teak_internal",
-	}
-	for _, tname := range tables {
+	for tname := range tables {
 		query := fmt.Sprintf("DROP TABLE %s;", tname)
 		_, err = defDB.Exec(query)
 		if err != nil {
@@ -420,5 +423,12 @@ func (pg *dataStorage) hasTable(tableName string) (yes bool, err error) {
 	if err == nil && len(tables) > 0 {
 		yes = true
 	}
+	return yes, teak.LogErrorX("t.pg.store",
+		"Failed to check if table %s exists", err, tableName)
+}
+
+//IsInitialized - tells if data source is initialized
+func (pg *dataStorage) IsInitialized() (yes bool, err error) {
+	yes, err = pg.hasTable("teak_internal")
 	return yes, err
 }

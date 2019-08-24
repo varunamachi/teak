@@ -311,9 +311,10 @@ func generateSelector(
 	return selector
 }
 
-//Init - initialize the data storage - this needs to be run on each application
-//start up
-func (mds *dataStorage) Init() (err error) {
+//Init - initialize the data storage for the first time, sets it upda and also
+//creates the first admin user. Data store can be initialized only once
+func (mds *dataStorage) Init(admin *User, adminPass string, param M) (
+	err error) {
 	return err
 }
 
@@ -356,4 +357,10 @@ func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
 //GetManageCommands - commands that can be used to manage this data storage
 func (mds *dataStorage) GetManageCommands() (commands []cli.Command) {
 	return commands
+}
+
+//IsInitialized - tells if data source is initialized
+func (mds *dataStorage) IsInitialized() (yes bool, err error) {
+	yes = true
+	return yes, err
 }

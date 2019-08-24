@@ -207,7 +207,8 @@ type DataStorage interface {
 		specs FilterSpecList,
 		filter *Filter) (values M, err error)
 
-	Init() error
+	IsInitialized() (yes bool, err error)
+	Init(admin *User, adminPass string, param M) error
 	Setup(params M) error
 	Reset() error
 	Destroy() error
