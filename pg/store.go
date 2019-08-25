@@ -255,14 +255,18 @@ func (pg *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 	val, err := pg.IsInitialized()
 	if err != nil {
 		err = teak.LogErrorX("t.pg.store",
-			"Failed to initialize data store", err)
+			"Failed to check initialization status of PG store", err)
 		return err
 	}
 	if val {
-		teak.Info("t.pg.store", "Store already initialized")
+		teak.Info("t.pg.store", "Store already initialized.")
+		teak.Info("t.pg.store",
+			"If you want to update the structure of the store, use Setup")
 		return err
 	}
 	err = pg.Setup(teak.M{})
+	//if setup is successful create the super user
+	//set the super user password
 	return err
 }
 
@@ -409,9 +413,10 @@ func (pg *dataStorage) GetManageCommands() (commands []cli.Command) {
 	return commands
 }
 
-func generateSelector(filter *teak.Filter) (selector string) {
-	//Will have to generate WHERE keyword if the filter is not empty
-	return selector
+//IsInitialized - tells if data source is initialized
+func (pg *dataStorage) IsInitialized() (yes bool, err error) {
+	yes, err = pg.hasTable("teak_internal")
+	return yes, err
 }
 
 func (pg *dataStorage) hasTable(tableName string) (yes bool, err error) {
@@ -427,8 +432,7 @@ func (pg *dataStorage) hasTable(tableName string) (yes bool, err error) {
 		"Failed to check if table %s exists", err, tableName)
 }
 
-//IsInitialized - tells if data source is initialized
-func (pg *dataStorage) IsInitialized() (yes bool, err error) {
-	yes, err = pg.hasTable("teak_internal")
-	return yes, err
+func generateSelector(filter *teak.Filter) (selector string) {
+	//Will have to generate WHERE keyword if the filter is not empty
+	return selector
 }

@@ -313,7 +313,7 @@ func generateSelector(
 
 //Init - initialize the data storage for the first time, sets it upda and also
 //creates the first admin user. Data store can be initialized only once
-func (mds *dataStorage) Init(admin *User, adminPass string, param M) (
+func (mds *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 	err error) {
 	return err
 }

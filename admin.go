@@ -82,6 +82,7 @@ func ping(ctx echo.Context) (err error) {
 //getAdminCommands - gives commands related to HTTP networking
 func getAdminCommands() []*cli.Command {
 	return []*cli.Command{
+		dataStorage.Wrap(initCmd()),
 		dataStorage.Wrap(createUserCmd()),
 		dataStorage.Wrap(setupCmd()),
 		dataStorage.Wrap(resetCmd()),
@@ -92,8 +93,8 @@ func getAdminCommands() []*cli.Command {
 
 func createUserCmd() *cli.Command {
 	return &cli.Command{
-		Name:  "create-super",
-		Usage: "Create a super user",
+		Name:  "create-user",
+		Usage: "Create a user",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "id",
@@ -111,6 +112,11 @@ func createUserCmd() *cli.Command {
 				Name:  "last",
 				Usage: "Last name of the user",
 			},
+			cli.StringFlag{
+				Name: "role",
+				Usage: "Role of the user, one of: " +
+					"'super', 'admin', 'normal', 'monitor'",
+			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
 			ag := NewArgGetter(ctx)
@@ -118,6 +124,7 @@ func createUserCmd() *cli.Command {
 			email := ag.GetRequiredString("email")
 			first := ag.GetRequiredString("first")
 			last := ag.GetRequiredString("last")
+			roleStr := ag.GetRequiredString("role")
 			if err = ag.Err; err == nil {
 				one := AskPassword("Password")
 				two := AskPassword("Confirm")
@@ -125,7 +132,7 @@ func createUserCmd() *cli.Command {
 					user := User{
 						ID:         id,
 						Email:      email,
-						Auth:       Super,
+						Auth:       toRole(roleStr),
 						FirstName:  first,
 						LastName:   last,
 						FullName:   first + " " + last,
@@ -153,12 +160,61 @@ func initCmd() *cli.Command {
 		Name:  "init",
 		Usage: "Initialize application",
 		Flags: []cli.Flag{
-			cli.BoolFlag{
-				Name:  "reinit",
-				Usage: "Remove everything and reinitialize [Not supported yet]",
+			cli.StringFlag{
+				Name:  "super-id",
+				Usage: "Unique ID of the admin",
+			},
+			cli.StringFlag{
+				Name:  "email",
+				Usage: "Email of the admin user",
+			},
+			cli.StringFlag{
+				Name:  "first",
+				Usage: "First name of the admin",
+			},
+			cli.StringFlag{
+				Name:  "last",
+				Usage: "Last name of the admin",
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
+			ag := NewArgGetter(ctx)
+			id := ag.GetRequiredString("admin-id")
+			email := ag.GetRequiredString("email")
+			first := ag.GetRequiredString("first")
+			last := ag.GetRequiredString("last")
+			if err = ag.Err; err == nil {
+				one := AskPassword("Password")
+				two := AskPassword("Confirm")
+				if one == two {
+					user := User{
+						ID:         id,
+						Email:      email,
+						Auth:       Super,
+						FirstName:  first,
+						LastName:   last,
+						FullName:   first + " " + last,
+						CreatedAt:  time.Now(),
+						ModifiedAt: time.Now(),
+						Props: SM{
+							"initial": "true",
+						},
+						PwdExpiry: time.Now().AddDate(1, 0, 0),
+						State:     Active,
+					}
+					err = GetStore().Init(&user, one, M{})
+					// err = userStorage.CreateUser(&user)
+					// if err != nil {
+					// 	err = LogErrorX("t.store",
+					// 		"Failed to create initial super user", err)
+					// 	return err
+					// }
+					// err = userStorage.SetPassword(id, one)
+				}
+			} else {
+				err = Error("t.store",
+					"Initial super user password does not match")
+			}
 			return err
 		},
 	}
@@ -388,4 +444,20 @@ func GetAppReference(ctx *cli.Context) (vapp *App) {
 		vapp, _ = vi.(*App)
 	}
 	return vapp
+}
+
+func toRole(roleStr string) AuthLevel {
+	switch roleStr {
+	case "super":
+		return Super
+	case "admin":
+		return Admin
+	case "normal":
+		return Normal
+	case "monitor":
+		return Monitor
+	case "public":
+		return Public
+	}
+	return Monitor
 }
