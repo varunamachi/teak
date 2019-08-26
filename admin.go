@@ -83,75 +83,9 @@ func ping(ctx echo.Context) (err error) {
 func getAdminCommands() []*cli.Command {
 	return []*cli.Command{
 		dataStorage.Wrap(initCmd()),
-		dataStorage.Wrap(createUserCmd()),
+		dataStorage.Wrap(userCmd()),
 		dataStorage.Wrap(setupCmd()),
 		dataStorage.Wrap(resetCmd()),
-		dataStorage.Wrap(overridePasswordCmd()),
-		testEMail(),
-	}
-}
-
-func createUserCmd() *cli.Command {
-	return &cli.Command{
-		Name:  "create-user",
-		Usage: "Create a user",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "id",
-				Usage: "Unique ID of the user",
-			},
-			cli.StringFlag{
-				Name:  "email",
-				Usage: "Email of the password",
-			},
-			cli.StringFlag{
-				Name:  "first",
-				Usage: "First name of the user",
-			},
-			cli.StringFlag{
-				Name:  "last",
-				Usage: "Last name of the user",
-			},
-			cli.StringFlag{
-				Name: "role",
-				Usage: "Role of the user, one of: " +
-					"'super', 'admin', 'normal', 'monitor'",
-			},
-		},
-		Action: func(ctx *cli.Context) (err error) {
-			ag := NewArgGetter(ctx)
-			id := ag.GetRequiredString("id")
-			email := ag.GetRequiredString("email")
-			first := ag.GetRequiredString("first")
-			last := ag.GetRequiredString("last")
-			roleStr := ag.GetRequiredString("role")
-			if err = ag.Err; err == nil {
-				one := AskPassword("Password")
-				two := AskPassword("Confirm")
-				if one == two {
-					user := User{
-						ID:         id,
-						Email:      email,
-						Auth:       toRole(roleStr),
-						FirstName:  first,
-						LastName:   last,
-						FullName:   first + " " + last,
-						CreatedAt:  time.Now(),
-						ModifiedAt: time.Now(),
-						Props:      SM{},
-						PwdExpiry:  time.Now().AddDate(1, 0, 0),
-						State:      Active,
-					}
-					err = userStorage.CreateUser(&user)
-					if err != nil {
-						//wrap
-						return err
-					}
-					err = userStorage.SetPassword(id, one)
-				}
-			}
-			return err
-		},
 	}
 }
 
@@ -179,7 +113,7 @@ func initCmd() *cli.Command {
 		},
 		Action: func(ctx *cli.Context) (err error) {
 			ag := NewArgGetter(ctx)
-			id := ag.GetRequiredString("admin-id")
+			id := ag.GetRequiredString("super-id")
 			email := ag.GetRequiredString("email")
 			first := ag.GetRequiredString("first")
 			last := ag.GetRequiredString("last")
@@ -203,13 +137,6 @@ func initCmd() *cli.Command {
 						State:     Active,
 					}
 					err = GetStore().Init(&user, one, M{})
-					// err = userStorage.CreateUser(&user)
-					// if err != nil {
-					// 	err = LogErrorX("t.store",
-					// 		"Failed to create initial super user", err)
-					// 	return err
-					// }
-					// err = userStorage.SetPassword(id, one)
 				}
 			} else {
 				err = Error("t.store",
@@ -336,6 +263,82 @@ func resetCmd() *cli.Command {
 				err = errors.New("V App not properly initialized")
 			}
 			return LogError("t.app.admin", err)
+		},
+	}
+}
+
+func userCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "uman",
+		Usage: "Commands for user management",
+		Subcommands: []cli.Command{
+			*createUserCmd(),
+			*overridePasswordCmd(),
+			*testEMail(),
+		},
+	}
+}
+
+func createUserCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "create",
+		Usage: "Create a user",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "id",
+				Usage: "Unique ID of the user",
+			},
+			cli.StringFlag{
+				Name:  "email",
+				Usage: "Email of the password",
+			},
+			cli.StringFlag{
+				Name:  "first",
+				Usage: "First name of the user",
+			},
+			cli.StringFlag{
+				Name:  "last",
+				Usage: "Last name of the user",
+			},
+			cli.StringFlag{
+				Name: "role",
+				Usage: "Role of the user, one of: " +
+					"'super', 'admin', 'normal', 'monitor'",
+			},
+		},
+		Action: func(ctx *cli.Context) (err error) {
+			ag := NewArgGetter(ctx)
+			id := ag.GetRequiredString("id")
+			email := ag.GetRequiredString("email")
+			first := ag.GetRequiredString("first")
+			last := ag.GetRequiredString("last")
+			roleStr := ag.GetRequiredString("role")
+			if err = ag.Err; err == nil {
+				one := AskPassword("Password")
+				two := AskPassword("Confirm")
+				if one == two {
+					user := User{
+						ID:         id,
+						Email:      email,
+						Auth:       toRole(roleStr),
+						FirstName:  first,
+						LastName:   last,
+						FullName:   first + " " + last,
+						CreatedAt:  time.Now(),
+						ModifiedAt: time.Now(),
+						Props:      SM{},
+						PwdExpiry:  time.Now().AddDate(1, 0, 0),
+						State:      Active,
+					}
+					err = userStorage.CreateUser(&user)
+					if err != nil {
+						//wrap
+						return err
+					}
+					err = userStorage.SetPassword(id, one)
+				}
+			}
+			return err
 		},
 	}
 }

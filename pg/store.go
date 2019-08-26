@@ -58,7 +58,8 @@ func (pg *dataStorage) Create(
 		if i != 0 {
 			buf.WriteString(", ")
 		}
-		buf.WriteString("?") //fix flat map to give strings
+		buf.WriteString("$") //fix flat map to give strings
+		buf.WriteString(strconv.Itoa(i + 1))
 	}
 	buf.WriteString(");")
 	// fmt.Println(buf.String())
@@ -93,13 +94,15 @@ func (pg *dataStorage) Update(
 				buf.WriteString(", ")
 			}
 			buf.WriteString(propName)
-			buf.WriteString(" = ?")
+			buf.WriteString(" = $")
+			buf.WriteString(strconv.Itoa(i + 1))
 			vals = append(vals, val)
 		}
 	}
 	buf.WriteString(" WHERE ")
 	buf.WriteString(keyField)
-	buf.WriteString(" = ?;")
+	buf.WriteString(" = $")
+	buf.WriteString(strconv.Itoa(len(hdl.PropNames()) + 1))
 	vals = append(vals, key)
 	// fmt.Println(buf.String())
 	_, err = defDB.Exec(buf.String(), vals...)
@@ -119,7 +122,7 @@ func (pg *dataStorage) Delete(
 	buf.WriteString(dtype)
 	buf.WriteString(" WHERE ")
 	buf.WriteString(keyField)
-	buf.WriteString(" = ?;")
+	buf.WriteString(" = $1")
 	_, err = defDB.Exec(buf.String(), key)
 	return err
 }
@@ -138,7 +141,7 @@ func (pg *dataStorage) RetrieveOne(
 	buf.WriteString(dtype)
 	buf.WriteString(" WHERE ")
 	buf.WriteString(keyField)
-	buf.WriteString(" = ?;")
+	buf.WriteString(" = $1")
 	err = defDB.Select(out, buf.String(), key)
 	return err
 }
@@ -265,8 +268,23 @@ func (pg *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 		return err
 	}
 	err = pg.Setup(teak.M{})
-	//if setup is successful create the super user
-	//set the super user password
+	if err != nil {
+		err = teak.LogErrorX("t.pg.store", "Failed to setup app", err)
+		return err
+	}
+	uStore := NewUserStorage()
+	err = uStore.CreateUser(admin)
+	if err != nil {
+		err = teak.LogErrorX("t.pg.store",
+			"Failed to create initial super admin", err)
+		return err
+	}
+	err = uStore.SetPassword(admin.ID, adminPass)
+	if err != nil {
+		err = teak.LogErrorX("t.pg.store",
+			"Failed to set initial super user password", err)
+		return err
+	}
 	return err
 }
 
@@ -420,14 +438,11 @@ func (pg *dataStorage) IsInitialized() (yes bool, err error) {
 }
 
 func (pg *dataStorage) hasTable(tableName string) (yes bool, err error) {
-	tables := make([]string, 0, 1)
-	err = defDB.Select(tables,
-		`SELECT table_name FROM information_schema.tables 
-			WHERE table_schema = 'public' AND table_name = ? LIMIT 1`,
+	err = defDB.Get(&yes,
+		`SELECT EXISTS (
+			SELECT 1 FROM information_schema.tables 
+			WHERE table_schema = 'public' AND table_name = $1)`,
 		tableName)
-	if err == nil && len(tables) > 0 {
-		yes = true
-	}
 	return yes, teak.LogErrorX("t.pg.store",
 		"Failed to check if table %s exists", err, tableName)
 }

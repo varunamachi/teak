@@ -315,6 +315,36 @@ func generateSelector(
 //creates the first admin user. Data store can be initialized only once
 func (mds *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 	err error) {
+	val, err := mds.IsInitialized()
+	if err != nil {
+		err = teak.LogErrorX("t.mongo.store",
+			"Failed to check initialization status of PG store", err)
+		return err
+	}
+	if val {
+		teak.Info("t.mongo.store", "Store already initialized.")
+		teak.Info("t.mongo.store",
+			"If you want to update the structure of the store, use Setup")
+		return err
+	}
+	err = mds.Setup(teak.M{})
+	if err != nil {
+		err = teak.LogErrorX("t.mongo.store", "Failed to setup app", err)
+		return err
+	}
+	uStore := NewUserStorage()
+	err = uStore.CreateUser(admin)
+	if err != nil {
+		err = teak.LogErrorX("t.mongo.store",
+			"Failed to create initial super admin", err)
+		return err
+	}
+	err = uStore.SetPassword(admin.ID, adminPass)
+	if err != nil {
+		err = teak.LogErrorX("t.mongo.store",
+			"Failed to set initial super user password", err)
+		return err
+	}
 	return err
 }
 

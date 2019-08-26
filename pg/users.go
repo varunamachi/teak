@@ -85,7 +85,7 @@ func (m *userStorage) UpdateUser(user *teak.User) (err error) {
 
 //DeleteUser - deletes user with given user ID
 func (m *userStorage) DeleteUser(userID string) (err error) {
-	query := `DELETE FROM teak_user WHERE id = ?`
+	query := `DELETE FROM teak_user WHERE id = $1`
 	_, err = defDB.Exec(query, userID)
 	return teak.LogErrorX("t.user.pg", "Failed to delete user with id %s",
 		err, userID)
@@ -94,7 +94,7 @@ func (m *userStorage) DeleteUser(userID string) (err error) {
 //GetUser - gets details of the user corresponding to ID
 func (m *userStorage) GetUser(userID string) (user *teak.User, err error) {
 	user = &teak.User{}
-	query := `SELECT * FROM teak_user WHERE id = ?`
+	query := `SELECT * FROM teak_user WHERE id = $1`
 	defDB.Select(user, query, userID)
 	return user, teak.LogError("t.user.pg", err)
 }
@@ -162,7 +162,7 @@ func (m *userStorage) SetPassword(userID, newPwd string) (err error) {
 		return err
 	}
 	query := `
-		INSERT INTO user_secret(userID, phash) VALUES(?, ?)
+		INSERT INTO user_secret(userID, phash) VALUES($1, $2)
 			ON CONFLICT DO UPDATE
 				SET phash = EXCLUDED.phash
 	`
@@ -178,7 +178,7 @@ func (m *userStorage) ValidateUser(userID, password string) (err error) {
 	}()
 	var phash string
 	err = defDB.Select(&phash,
-		`SELECT phash FROM user_secret WHERE userID = ?`, userID)
+		`SELECT phash FROM user_secret WHERE userID = $1`, userID)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func (m *userStorage) ValidateUser(userID, password string) (err error) {
 	if err != nil {
 		return err
 	}
-	query := `UPDATE user_secret SET phash = ? WHERE userID = ?`
+	query := `UPDATE user_secret SET phash = $1 WHERE userID = $2`
 	_, err = defDB.Exec(query, newHash, userID)
 	return err
 }
@@ -194,7 +194,8 @@ func (m *userStorage) ValidateUser(userID, password string) (err error) {
 //GetUserAuthLevel - gets user authorization level
 func (m *userStorage) GetUserAuthLevel(
 	userID string) (level teak.AuthLevel, err error) {
-	err = defDB.Select(&level, `SELECT auth FROM teak_user WHERE id = ?`, userID)
+	err = defDB.Get(&level,
+		`SELECT auth FROM teak_user WHERE id = $1`, userID)
 	return level, teak.LogErrorX("t.user.pg",
 		"Failed to retrieve auth level for '%s'", err, userID)
 }
@@ -217,7 +218,7 @@ func (m *userStorage) CreateSuperUser(
 	// 	err = teak.Error("t.user.pg", "Maximum limit for super admins reached")
 	// 	return err
 	// }
-	// query := `UPDATE teak_user SET auth = 0 WHERE id = ?`
+	// query := `UPDATE teak_user SET auth = 0 WHERE id = $1`
 	// _, err = defDB.Exec(query, user.ID)
 	// if err != nil {
 	// 	err = teak.LogErrorX("t.user.pg",
@@ -229,7 +230,7 @@ func (m *userStorage) CreateSuperUser(
 //SetUserState - sets state of an user account
 func (m *userStorage) SetUserState(
 	userID string, state teak.UserState) (err error) {
-	_, err = defDB.Exec("UPDATE teak_user SET state = ? WHERE id = ?",
+	_, err = defDB.Exec("UPDATE teak_user SET state = $1 WHERE id = $2",
 		userID, state)
 	return teak.LogErrorX("t.user.pg",
 		"Failed to update state for user with ID '%s'", err, userID)
@@ -240,10 +241,10 @@ func (m *userStorage) SetUserState(
 func (m *userStorage) VerifyUser(userID, verID string) (err error) {
 	query := `
 		UPDATE teak_user SET 
-			state = ?, 
-			verifiedAt = ?, 
+			state = $1, 
+			verifiedAt = $2, 
 			verID = ""
-		WHERE id = ? AND verID = ?
+		WHERE id = $3 AND verID = $4
 	`
 	_, err = defDB.Exec(query, teak.Active, time.Now(), userID, verID)
 	return teak.LogErrorX("t.user.pg", "Failed to verify user with id %s",
@@ -263,14 +264,14 @@ func (m *userStorage) CleanData() (err error) {
 func (m *userStorage) UpdateProfile(user *teak.User) (err error) {
 	query := `
 		UPDATE teak_user SET 
-			email = ?,
-			firstName = ?,
-			lastName = ?,
-			title = ?,
-			fullName = ?,
-			modifiedAt = ?,
-			modifiedBy = ?
-		WHERE id = ?
+			email = $1,
+			firstName = $2,
+			lastName = $3,
+			title = $4,
+			fullName = $5,
+			modifiedAt = $6,
+			modifiedBy = $7
+		WHERE id = $8
 	`
 	_, err = defDB.Exec(query,
 		user.Email,
@@ -279,6 +280,7 @@ func (m *userStorage) UpdateProfile(user *teak.User) (err error) {
 		user.Title,
 		user.FullName,
 		time.Now(),
-		user.FullName)
+		user.FullName,
+		user.ID)
 	return teak.LogError("t.user.pg", err)
 }
