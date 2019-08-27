@@ -22,7 +22,9 @@ func NewUserStorage() teak.UserStorage {
 func (m *userStorage) CreateUser(user *teak.User) (err error) {
 	conn := DefaultConn()
 	defer conn.Close()
-	// _, err = conn.C("users").Upsert(bson.M{"id": user.ID}, user)
+	if err = m.validateForSuper(conn, user.Auth); err != nil {
+		return err
+	}
 	err = conn.C("users").Insert(user)
 	return teak.LogError("t.user.mongo", err)
 }
@@ -31,6 +33,9 @@ func (m *userStorage) CreateUser(user *teak.User) (err error) {
 func (m *userStorage) UpdateUser(user *teak.User) (err error) {
 	conn := DefaultConn()
 	defer conn.Close()
+	if err = m.validateForSuper(conn, user.Auth); err != nil {
+		return err
+	}
 	err = conn.C("users").Update(bson.M{"id": user.ID}, user)
 	return teak.LogError("t.user.mongo", err)
 }
@@ -206,31 +211,45 @@ func (m *userStorage) GetUserAuthLevel(
 	return level, teak.LogError("UMan:Mongo", err)
 }
 
-//CreateSuperUser - creates the first super user for the application
-func (m *userStorage) CreateSuperUser(
-	user *teak.User, password string) (err error) {
-	defer func() {
-		teak.LogError("t.user.mongo", err)
-	}()
+//SetAuthLevel - sets the auth level for the user
+func (m *userStorage) SetAuthLevel(
+	userID string, authLevel teak.AuthLevel) (err error) {
 	conn := DefaultConn()
 	defer conn.Close()
+	if err = m.validateForSuper(conn, authLevel); err != nil {
+		return err
+	}
+	err = conn.C("users").Update(
+		bson.M{
+			"id": userID,
+		},
+		bson.M{
+			"$set": bson.M{
+				"auth": authLevel,
+			},
+		},
+	)
+	return teak.LogError("t.user.mongo", err)
+}
+
+func (m *userStorage) validateForSuper(
+	conn *Conn, alevel teak.AuthLevel) (err error) {
+	if alevel != teak.Super {
+		return err //no error
+	}
 	var count int
-	count, _ = conn.C("users").Find(bson.M{"auth": 0}).Count()
+	count, err = conn.C("users").Find(bson.M{"auth": 0}).Count()
+	if err != nil {
+		err = teak.LogErrorX("t.user.mongo",
+			"Failed to get number of super admins", err)
+		return err
+	}
 	if count > 5 {
-		err = errors.New("Super user limit exceeded")
+		err = teak.Error("t.user.mongo",
+			"Maximum limit for super admins reached")
 		return err
 	}
-	err = teak.UpdateUserInfo(user)
-	if err != nil {
-		return err
-	}
-	user.State = teak.Active
-	err = m.CreateUser(user)
-	if err != nil {
-		return err
-	}
-	err = m.SetPassword(user.ID, password)
-	return teak.LogError("UMan:Mongo", err)
+	return err
 }
 
 //SetUserState - sets state of an user account

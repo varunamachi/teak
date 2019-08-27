@@ -139,7 +139,10 @@ type UserStorage interface {
 	GetUserAuthLevel(userID string) (level AuthLevel, err error)
 
 	//CreateSuperUser - creates the first super user for the application
-	CreateSuperUser(user *User, password string) (err error)
+	// CreateSuperUser(user *User, password string) (err error)
+
+	//SetAuthLevel - sets the auth level for the user
+	SetAuthLevel(userID string, authLevel AuthLevel) (err error)
 
 	//SetUserState - sets state of an user account
 	SetUserState(userID string, state UserState) (err error)

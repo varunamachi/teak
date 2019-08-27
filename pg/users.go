@@ -17,6 +17,9 @@ func NewUserStorage() teak.UserStorage {
 
 //CreateUser - creates user in database
 func (m *userStorage) CreateUser(user *teak.User) (err error) {
+	if err = m.validateForSuper(user.Auth); err != nil {
+		return err
+	}
 	query := `
 		INSERT INTO teak_user(
 			id,
@@ -60,6 +63,9 @@ func (m *userStorage) CreateUser(user *teak.User) (err error) {
 
 //UpdateUser - updates user in database
 func (m *userStorage) UpdateUser(user *teak.User) (err error) {
+	if err = m.validateForSuper(user.Auth); err != nil {
+		return err
+	}
 	query := `
 		UPDATE teak_user SET 
 			email = :email,
@@ -200,30 +206,35 @@ func (m *userStorage) GetUserAuthLevel(
 		"Failed to retrieve auth level for '%s'", err, userID)
 }
 
-//CreateSuperUser - creates the first super user for the application
-func (m *userStorage) CreateSuperUser(
-	user *teak.User, password string) (err error) {
-	///Todo change this interface to set role...
-	///If role is super add extra validations
+//SetAuthLevel - sets the auth level for the user
+func (m *userStorage) SetAuthLevel(
+	userID string, authLevel teak.AuthLevel) (err error) {
+	if err = m.validateForSuper(authLevel); err != nil {
+		return err
+	}
+	_, err = defDB.Exec("UPDATE teak_user SET auth = $1 WHERE id = $2",
+		userID, authLevel)
+	return teak.LogErrorX("t.user.pg",
+		"Failed to update auth level for user with ID '%s'", err, userID)
+}
 
-	// numSuper := 0
-	// err = defDB.Select(&numSuper,
-	// 		"SELECT COUNT(*) FROM teak_user WHERE auth = 0")
-	// if err != nil {
-	// 	err = teak.LogErrorX("t.user.pg",
-	// 		"Failed to get number of super admins", err)
-	// 	return err
-	// }
-	// if numSuper >= 5 {
-	// 	err = teak.Error("t.user.pg", "Maximum limit for super admins reached")
-	// 	return err
-	// }
-	// query := `UPDATE teak_user SET auth = 0 WHERE id = $1`
-	// _, err = defDB.Exec(query, user.ID)
-	// if err != nil {
-	// 	err = teak.LogErrorX("t.user.pg",
-	// 		"Failed to set super user role to %s", err, user.FullName)
-	// }
+func (m *userStorage) validateForSuper(alevel teak.AuthLevel) (err error) {
+	if alevel != teak.Super {
+		return err //no error
+	}
+	numSuper := 0
+	err = defDB.Select(&numSuper,
+		"SELECT COUNT(*) FROM teak_user WHERE auth = 0")
+	if err != nil {
+		err = teak.LogErrorX("t.user.pg",
+			"Failed to get number of super admins", err)
+		return err
+	}
+	if numSuper >= 5 {
+		err = teak.Error("t.user.pg",
+			"Maximum limit for super admins reached")
+		return err
+	}
 	return err
 }
 
