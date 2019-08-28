@@ -343,6 +343,76 @@ func createUserCmd() *cli.Command {
 	}
 }
 
+func setRoleCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "set-role",
+		Usage: "Sets auth-level/role to a user",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "admin-id",
+				Usage: "Super user ID",
+			},
+			cli.StringFlag{
+				Name:  "admin-pw",
+				Usage: "Super user password",
+			},
+			cli.StringFlag{
+				Name:  "id",
+				Usage: "Unique ID of the user",
+			},
+			cli.StringFlag{
+				Name: "role",
+				Usage: "Role of the user, one of: " +
+					"'super', 'admin', 'normal', 'monitor'",
+			},
+		},
+		Action: func(ctx *cli.Context) (err error) {
+			ag := NewArgGetter(ctx)
+			id := ag.GetRequiredString("id")
+			roleStr := ag.GetRequiredString("role")
+			adminID := ag.GetRequiredString("admin-id")
+			adminPW := ag.GetOptionalString("admin-pw")
+			var user *User
+			if err = ag.Err; err == nil {
+				defer func() {
+					adminName := adminID
+					if user != nil {
+						adminName = user.FirstName +
+							" " + user.LastName
+					}
+					LogEvent(
+						"user_role_set",
+						adminID,
+						adminName,
+						err != nil,
+						ErrString(err),
+						nil)
+				}()
+				if len(adminPW) == 0 {
+					adminPW = AskPassword("Admin Password")
+				}
+				user, err = DoLogin(adminID, adminPW)
+				if err != nil {
+					err = LogErrorX("t.app.admin",
+						"Failed to authenticate admin user: %s",
+						err,
+						adminID)
+					return err
+				}
+				if user.Auth != Super || user.Auth != Admin {
+					err = Error("t.app.admin",
+						"User '%s' is not an admin/super user",
+						adminID)
+					return err
+				}
+				err = GetUserStorage().SetAuthLevel(id, toRole(roleStr))
+			}
+			return LogErrorX("t.app.admin",
+				"Failed to set role for user %s", err, id)
+		},
+	}
+}
+
 func overridePasswordCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "force-pw-reset",

@@ -82,21 +82,6 @@ func (m *userStorage) GetCount(filter *teak.Filter) (count int, err error) {
 	return count, teak.LogError("t.user.mongo", err)
 }
 
-//GetAllUsersWithCount - gets all users based on offset and limit, total count
-//is also returned
-// func (m *userStorage) GetAllUsersWithCount(offset, limit int) (
-// 	total int, users []*teak.User, err error) {
-// 	conn := DefaultConn()
-// 	defer conn.Close()
-// 	users = make([]*teak.User, 0, limit)
-// 	q := conn.C("users").Find(bson.M{}).Sort("-created")
-// 	total, err = q.Count()
-// 	if err == nil {
-// 		err = q.Skip(offset).Limit(limit).All(&users)
-// 	}
-// 	return total, users, teak.LogError("t.user.mongo", err)
-// }
-
 //GetUsersWithCount - Get users with total count
 func (m *userStorage) GetUsersWithCount(
 	offset, limit int, filter *teak.Filter) (
