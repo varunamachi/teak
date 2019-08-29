@@ -299,28 +299,28 @@ var tables = map[string]string{
 		fullName		VARCHAR(128)	NOT NULL,
 		state			CHAR(10)		NOT NULL DEFAULT 'disabled',
 		verID			CHAR(38),
-		pwdExpiry		TIMESTAMPZ,
-		createdAt		TIMESTAMPZ,
+		pwdExpiry		TIMESTAMPTZ,
+		createdAt		TIMESTAMPTZ,
 		createdBy		CHAR(128),
-		modifiedAt		TIMESTAMPZ,
+		modifiedAt		TIMESTAMPTZ,
 		modifiedBy		CHAR(128),
-		verifiedAt		TIMESTAMPZ,
-		props			HSTORE
+		verifiedAt		TIMESTAMPTZ,
+		props			JSONB
 	);`,
 	"user_secret": `CREATE TABLE user_secret(
 		userID  	CHAR(128)		PRIMARY KEY,
 		phash		VARCHAR(256),
-		FOREIGN KEY userID REFERENCES teak_user(id) ON DELETE CASCADE
+		FOREIGN KEY (userID) REFERENCES teak_user(id) ON DELETE CASCADE
 	)`,
 	"teak_event": `CREATE TABLE teak_event(
-		id			string		PRIMARY KEY,
+		id			CHAR(60)		PRIMARY KEY,
 		op			CHAR(60),
 		userID		CHAR(60),
 		userName	CHAR(60),
 		success		CHAR(60),
 		error		CHAR(60),
 		time		CHAR(60),
-		data		HSTORE
+		data		JSONB
 	)`,
 	"teak_internal": `CREATE TABLE teak_internal(
 			key 	VARCHAR(100)	PRIMARY KEY,

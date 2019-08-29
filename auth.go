@@ -71,7 +71,7 @@ type User struct {
 	ModifiedAt time.Time `json:"modifiedAt"`
 	ModifiedBy string    `json:"modifiedBy"`
 	VerfiedAt  time.Time `json:"verifiedAt"`
-	Props      SM        `json:"props"`
+	Props      M         `json:"props"`
 }
 
 //Group - group of users

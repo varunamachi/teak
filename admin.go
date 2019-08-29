@@ -130,7 +130,7 @@ func initCmd() *cli.Command {
 						FullName:   first + " " + last,
 						CreatedAt:  time.Now(),
 						ModifiedAt: time.Now(),
-						Props: SM{
+						Props: M{
 							"initial": "true",
 						},
 						PwdExpiry: time.Now().AddDate(1, 0, 0),
@@ -326,7 +326,7 @@ func createUserCmd() *cli.Command {
 						FullName:   first + " " + last,
 						CreatedAt:  time.Now(),
 						ModifiedAt: time.Now(),
-						Props:      SM{},
+						Props:      M{},
 						PwdExpiry:  time.Now().AddDate(1, 0, 0),
 						State:      Active,
 					}
@@ -399,7 +399,7 @@ func setRoleCmd() *cli.Command {
 						adminID)
 					return err
 				}
-				if user.Auth != Super || user.Auth != Admin {
+				if user.Auth != Super && user.Auth != Admin {
 					err = Error("t.app.admin",
 						"User '%s' is not an admin/super user",
 						adminID)
