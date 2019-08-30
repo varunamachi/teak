@@ -83,9 +83,10 @@ func ping(ctx echo.Context) (err error) {
 func getAdminCommands() []*cli.Command {
 	return []*cli.Command{
 		dataStorage.Wrap(initCmd()),
-		dataStorage.Wrap(userCmd()),
+		dataStorage.Wrap(destroyCmd()),
 		dataStorage.Wrap(setupCmd()),
 		dataStorage.Wrap(resetCmd()),
+		dataStorage.Wrap(userCmd()),
 	}
 }
 
@@ -142,6 +143,43 @@ func initCmd() *cli.Command {
 				err = Error("t.store",
 					"Initial super user password does not match")
 			}
+			return err
+		},
+	}
+}
+
+func destroyCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "destroy",
+		Usage: "Destroy application, data source etc",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "super-id",
+				Usage: "Unique ID of the admin",
+			},
+		},
+		Action: func(ctx *cli.Context) (err error) {
+			// ag := NewArgGetter(ctx)
+			// superID := ag.GetRequiredString("super-id")
+			// if err = ag.Err; err == nil {
+			// 	superPW := AskPassword("Password")
+			// 	var user *User
+			// 	user, err = DoLogin(superID, superPW)
+			// 	if err != nil {
+			// 		err = fmt.Errorf(
+			// 			"Failed to authenticate super user: %v",
+			// 			err)
+			// 		return err
+			// 	}
+			// 	if user.Auth != Super {
+			// 		err = errors.New(
+			// 			"Only super user can destroy the app")
+			// 	}
+			err = GetStore().Destroy()
+			// } else {
+			// 	err = Error("t.store",
+			// 		"Initial super user password does not match")
+			// }
 			return err
 		},
 	}

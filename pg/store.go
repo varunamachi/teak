@@ -362,9 +362,8 @@ func (pg *dataStorage) Destroy() (err error) {
 		query := fmt.Sprintf("DROP TABLE %s;", tname)
 		_, err = defDB.Exec(query)
 		if err != nil {
-			teak.Error(
+			teak.Warn(
 				"t.pg.store", "Failed delete table '%s': %v", tname, err)
-			//break??
 		}
 	}
 	return err

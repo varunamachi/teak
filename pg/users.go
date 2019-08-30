@@ -36,27 +36,26 @@ func (m *userStorage) CreateUser(user *teak.User) (err error) {
 			createdBy,
 			modifiedAt,
 			modifiedBy,
-			verifiedAt,
-			props
+			verifiedAt
 		) VALUES (
-			:id
-			:email
-			:auth
-			:firstName
-			:lastName
-			:title
-			:fullName
-			:state
-			:verID
-			:pwdExpiry
-			:createdAt
-			:createdBy
-			:modifiedAt
-			:modifiedBy
+			:id,
+			:email,
+			:auth,
+			:firstName,
+			:lastName,
+			:title,
+			:fullName,
+			:state,
+			:verID,
+			:pwdExpiry,
+			:createdAt,
+			:createdBy,
+			:modifiedAt,
+			:modifiedBy,
 			:verifiedAt
-			:props
 		)
 	`
+	//Skipped props for now
 	_, err = defDB.NamedExec(query, user)
 	return teak.LogError("t.user.pg", err)
 }
@@ -223,7 +222,7 @@ func (m *userStorage) validateForSuper(alevel teak.AuthLevel) (err error) {
 		return err //no error
 	}
 	numSuper := 0
-	err = defDB.Select(&numSuper,
+	err = defDB.Get(&numSuper,
 		"SELECT COUNT(*) FROM teak_user WHERE auth = 0")
 	if err != nil {
 		err = teak.LogErrorX("t.user.pg",
