@@ -288,54 +288,70 @@ func (pg *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 	return err
 }
 
-var tables = map[string]string{
-	"teak_user": `CREATE TABLE teak_user(
-		id				CHAR(128)		PRIMARY KEY,
-		email			VARCHAR(100)	NOT NULL,
-		auth			INTEGER			NOT NULL,
-		firstName		VARCHAR(64)		NOT NULL,
-		lastName		VARCHAR(64)		,
-		title			CHAR(10)		NOT NULL,
-		fullName		VARCHAR(128)	NOT NULL,
-		state			CHAR(10)		NOT NULL DEFAULT 'disabled',
-		verID			CHAR(38),
-		pwdExpiry		TIMESTAMPTZ,
-		createdAt		TIMESTAMPTZ,
-		createdBy		CHAR(128),
-		modifiedAt		TIMESTAMPTZ,
-		modifiedBy		CHAR(128),
-		verifiedAt		TIMESTAMPTZ,
-		props			JSONB
-	);`,
-	"user_secret": `CREATE TABLE user_secret(
-		userID  	CHAR(128)		PRIMARY KEY,
-		phash		VARCHAR(256),
-		FOREIGN KEY (userID) REFERENCES teak_user(id) ON DELETE CASCADE
-	)`,
-	"teak_event": `CREATE TABLE teak_event(
-		id			CHAR(60)		PRIMARY KEY,
-		op			CHAR(60),
-		userID		CHAR(60),
-		userName	CHAR(60),
-		success		CHAR(60),
-		error		CHAR(60),
-		time		CHAR(60),
-		data		JSONB
-	)`,
-	"teak_internal": `CREATE TABLE teak_internal(
+var tables = []struct {
+	name  string
+	query string
+}{
+	{
+		name: "teak_user",
+		query: `CREATE TABLE teak_user(
+			id				CHAR(128)		PRIMARY KEY,
+			email			VARCHAR(100)	NOT NULL,
+			auth			INTEGER			NOT NULL,
+			firstName		VARCHAR(64)		NOT NULL,
+			lastName		VARCHAR(64)		,
+			title			CHAR(10)		NOT NULL,
+			fullName		VARCHAR(128)	NOT NULL,
+			state			CHAR(10)		NOT NULL DEFAULT 'disabled',
+			verID			CHAR(38),
+			pwdExpiry		TIMESTAMPTZ,
+			createdAt		TIMESTAMPTZ,
+			createdBy		CHAR(128),
+			modifiedAt		TIMESTAMPTZ,
+			modifiedBy		CHAR(128),
+			verifiedAt		TIMESTAMPTZ,
+			props			JSONB
+		);`,
+	},
+	{
+		name: "user_secret",
+		query: `CREATE TABLE user_secret(
+			userID  	CHAR(128)		PRIMARY KEY,
+			phash		VARCHAR(256),
+			FOREIGN KEY (userID) REFERENCES teak_user(id) ON DELETE CASCADE
+		)`,
+	},
+	{
+		name: "teak_event",
+		query: `CREATE TABLE teak_event(
+			id			CHAR(60)		PRIMARY KEY,
+			op			CHAR(60),
+			userID		CHAR(60),
+			userName	CHAR(60),
+			success		CHAR(60),
+			error		CHAR(60),
+			time		CHAR(60),
+			data		JSONB
+		)`,
+	},
+	{
+		name: "teak_internal",
+		query: `CREATE TABLE teak_internal(
 			key 	VARCHAR(100)	PRIMARY KEY,
 			value 	JSONB
-	)`,
+		)`,
+	},
 }
 
 //Setup - setup has to be run when data storage structure changes, such as
 //adding index, altering tables etc
 func (pg *dataStorage) Setup(params teak.M) (err error) {
-	for name, query := range tables {
-		_, err = defDB.Exec(query)
+	// for name, query := range tables {
+	for _, tab := range tables {
+		_, err = defDB.Exec(tab.query)
 		if err != nil {
 			err = teak.LogErrorX("t.pg.store", "Failed to create table '%s'",
-				err, name)
+				err, tab.name)
 			break
 		}
 	}
@@ -344,12 +360,12 @@ func (pg *dataStorage) Setup(params teak.M) (err error) {
 
 //Reset - reset clears the data without affecting the structure/schema
 func (pg *dataStorage) Reset() (err error) {
-	for tname := range tables {
-		query := fmt.Sprintf("DELETE FROM %s;", tname)
+	for _, tab := range tables {
+		query := fmt.Sprintf("DELETE FROM %s;", tab.name)
 		_, err = defDB.Exec(query)
 		if err != nil {
 			teak.Error(
-				"t.pg.store", "Failed clear data from %s: %v", tname, err)
+				"t.pg.store", "Failed clear data from %s: %v", tab.name, err)
 			//break??
 		}
 	}
@@ -358,12 +374,12 @@ func (pg *dataStorage) Reset() (err error) {
 
 //Destroy - deletes data and also structure
 func (pg *dataStorage) Destroy() (err error) {
-	for tname := range tables {
-		query := fmt.Sprintf("DROP TABLE %s;", tname)
+	for _, tab := range tables {
+		query := fmt.Sprintf("DROP TABLE %s;", tab.name)
 		_, err = defDB.Exec(query)
 		if err != nil {
 			teak.Warn(
-				"t.pg.store", "Failed delete table '%s': %v", tname, err)
+				"t.pg.store", "Failed delete table '%s': %v", tab.name, err)
 		}
 	}
 	return err
