@@ -295,7 +295,7 @@ var tables = []struct {
 	{
 		name: "teak_user",
 		query: `CREATE TABLE teak_user(
-			id				CHAR(128)		PRIMARY KEY,
+			id				CHAR(128)		NOT NULL,
 			email			VARCHAR(100)	NOT NULL,
 			auth			INTEGER			NOT NULL,
 			firstName		VARCHAR(64)		NOT NULL,
@@ -310,7 +310,8 @@ var tables = []struct {
 			modifiedAt		TIMESTAMPTZ,
 			modifiedBy		CHAR(128),
 			verifiedAt		TIMESTAMPTZ,
-			props			JSONB
+			props			JSONB,
+			CONSTRAINT pk_id PRIMARY KEY(id)
 		);`,
 	},
 	{
@@ -374,7 +375,9 @@ func (pg *dataStorage) Reset() (err error) {
 
 //Destroy - deletes data and also structure
 func (pg *dataStorage) Destroy() (err error) {
-	for _, tab := range tables {
+	// for _, tab := range tables {
+	for i := len(tables) - 1; i >= 0; i-- {
+		tab := tables[i]
 		query := fmt.Sprintf("DROP TABLE %s;", tab.name)
 		_, err = defDB.Exec(query)
 		if err != nil {

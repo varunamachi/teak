@@ -168,7 +168,7 @@ func (m *userStorage) SetPassword(userID, newPwd string) (err error) {
 	}
 	query := `
 		INSERT INTO user_secret(userID, phash) VALUES($1, $2)
-			ON CONFLICT DO UPDATE
+			ON CONFLICT(userID) DO UPDATE
 				SET phash = EXCLUDED.phash
 	`
 	_, err = defDB.Exec(query, userID, newHash)
