@@ -63,7 +63,7 @@ func getEvents(ctx echo.Context) (err error) {
 		},
 		Err: ErrString(err),
 	})
-	return LogError("t.admin.events", err)
+	return LogError("t.app", err)
 }
 
 func ping(ctx echo.Context) (err error) {
@@ -76,7 +76,7 @@ func ping(ctx echo.Context) (err error) {
 		Data:   session,
 		Err:    ErrString(err),
 	})
-	return LogError("t.net.ping", err)
+	return LogError("t.app", err)
 }
 
 //getAdminCommands - gives commands related to HTTP networking
@@ -118,30 +118,34 @@ func initCmd() *cli.Command {
 			email := ag.GetRequiredString("email")
 			first := ag.GetRequiredString("first")
 			last := ag.GetRequiredString("last")
-			if err = ag.Err; err == nil {
-				one := AskPassword("Password")
-				two := AskPassword("Confirm")
-				if one == two {
-					user := User{
-						ID:         id,
-						Email:      email,
-						Auth:       Super,
-						FirstName:  first,
-						LastName:   last,
-						FullName:   first + " " + last,
-						CreatedAt:  time.Now(),
-						ModifiedAt: time.Now(),
-						Props: M{
-							"initial": "true",
-						},
-						PwdExpiry: time.Now().AddDate(1, 0, 0),
-						State:     Active,
-					}
-					err = GetStore().Init(&user, one, M{})
-				}
-			} else {
-				err = Error("t.store",
+			if err = ag.Err; err != nil {
+				return err
+			}
+			one := AskPassword("Password")
+			two := AskPassword("Confirm")
+			if one != two {
+				err = Error("t.app",
 					"Initial super user password does not match")
+				return err
+			}
+			user := User{
+				ID:         id,
+				Email:      email,
+				Auth:       Super,
+				FirstName:  first,
+				LastName:   last,
+				FullName:   first + " " + last,
+				CreatedAt:  time.Now(),
+				ModifiedAt: time.Now(),
+				Props: M{
+					"initial": "true",
+				},
+				PwdExpiry: time.Now().AddDate(1, 0, 0),
+				State:     Active,
+			}
+			err = GetStore().Init(&user, one, M{})
+			if err == nil {
+				Info("t.app", "App setup successful")
 			}
 			return err
 		},
@@ -161,25 +165,28 @@ func destroyCmd() *cli.Command {
 		Action: func(ctx *cli.Context) (err error) {
 			// ag := NewArgGetter(ctx)
 			// superID := ag.GetRequiredString("super-id")
-			// if err = ag.Err; err == nil {
-			// 	superPW := AskPassword("Password")
-			// 	var user *User
-			// 	user, err = DoLogin(superID, superPW)
-			// 	if err != nil {
-			// 		err = fmt.Errorf(
-			// 			"Failed to authenticate super user: %v",
-			// 			err)
-			// 		return err
-			// 	}
-			// 	if user.Auth != Super {
-			// 		err = errors.New(
-			// 			"Only super user can destroy the app")
-			// 	}
-			err = GetStore().Destroy()
-			// } else {
+			// if err = ag.Err; err != nil {
 			// 	err = Error("t.store",
 			// 		"Initial super user password does not match")
+			// 	return err
 			// }
+			// superPW := AskPassword("Password")
+			// var user *User
+			// user, err = DoLogin(superID, superPW)
+			// if err != nil {
+			// 	err = fmt.Errorf(
+			// 		"Failed to authenticate super user: %v",
+			// 		err)
+			// 	return err
+			// }
+			// if user.Auth != Super {
+			// 	err = errors.New(
+			// 		"Only super user can destroy the app")
+			// }
+			err = GetStore().Destroy()
+			if err == nil {
+				Info("t.app", "App storage destroyed")
+			}
 			return err
 		},
 	}
@@ -240,7 +247,7 @@ func setupCmd() *cli.Command {
 			} else {
 				err = errors.New("V App not properly initialized")
 			}
-			return LogError("t.app.admin", err)
+			return LogError("t.app", err)
 		},
 	}
 }
@@ -300,7 +307,7 @@ func resetCmd() *cli.Command {
 			} else {
 				err = errors.New("V App not properly initialized")
 			}
-			return LogError("t.app.admin", err)
+			return LogError("t.app", err)
 		},
 	}
 }
@@ -445,7 +452,7 @@ func setRoleCmd() *cli.Command {
 				}
 				err = GetUserStorage().SetAuthLevel(id, toRole(roleStr))
 			}
-			return LogErrorX("t.app.admin",
+			return LogErrorX("t.app",
 				"Failed to set role for user %s", err, id)
 		},
 	}
@@ -515,7 +522,7 @@ func overridePasswordCmd() *cli.Command {
 				}
 				err = userStorage.SetPassword(id, pw)
 				if err == nil {
-					Info("t.app.admin",
+					Info("t.app",
 						"Password for %s successfully reset", id)
 				}
 			}
