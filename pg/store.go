@@ -1,6 +1,9 @@
 package pg
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os/user"
 	"strconv"
@@ -9,6 +12,23 @@ import (
 	"github.com/varunamachi/teak"
 	"gopkg.in/urfave/cli.v1"
 )
+
+//DBAttr - used to store generic data in a JSONB column
+type DBAttr map[string]interface{}
+
+//Value - convert attribute to JSON while storing
+func (a DBAttr) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+//Scan - read JSON into attributes
+func (a *DBAttr) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("Invalid scan, expected bytes")
+	}
+	return json.Unmarshal(b, &a)
+}
 
 //dataStorage - Postgres implementation for dataStorage interface
 type dataStorage struct{}
@@ -338,8 +358,8 @@ var tables = []struct {
 	{
 		name: "teak_internal",
 		query: `CREATE TABLE teak_internal(
-			key 	VARCHAR(100)	PRIMARY KEY,
-			value 	JSONB
+			key		CHAR(128)	PRIMARY KEY,
+			value	JSONB,
 		)`,
 	},
 }
@@ -452,6 +472,12 @@ func (pg *dataStorage) GetManageCommands() (commands []cli.Command) {
 //IsInitialized - tells if data source is initialized
 func (pg *dataStorage) IsInitialized() (yes bool, err error) {
 	yes, err = pg.hasTable("teak_internal")
+	if err != nil {
+		err = teak.LogErrorX("t.pg.store",
+			"Failed check if store is initialized", err)
+		return yes, err
+	}
+	// query := defDB.Get(&yes, `SELECT initState FROM teak_internal`,
 	return yes, err
 }
 
