@@ -182,7 +182,7 @@ func (m *userStorage) ValidateUser(userID, password string) (err error) {
 			"Failed to validate user with id %s", err, userID)
 	}()
 	var phash string
-	err = defDB.Select(&phash,
+	err = defDB.Get(&phash,
 		`SELECT phash FROM user_secret WHERE userID = $1`, userID)
 	if err != nil {
 		return err

@@ -32,14 +32,14 @@ func requirePostgres(ctx *cli.Context) (err error) {
 		opts.Host = ag.GetRequiredString("pg-host")
 		opts.Port = ag.GetRequiredInt("pg-port")
 		opts.User = ag.GetRequiredString("pg-user")
-		opts.DBName = ag.GetRequiredString("pg-user")
+		opts.DBName = ag.GetRequiredString("pg-db")
 		opts.Password = ag.GetRequiredSecret("pg-pass")
 	} else {
 		teak.Info("t.pg", "Read postgresql options from app config")
 		opts.Host = ag.GetStringOr("pg-host", opts.Host)
 		opts.Port = ag.GetIntOr("pg-port", opts.Port)
 		opts.User = ag.GetStringOr("pg-user", opts.User)
-		opts.DBName = ag.GetStringOr("pg-db", opts.User)
+		opts.DBName = ag.GetStringOr("pg-db", opts.DBName)
 		opts.Password = ag.GetSecretOr("pg-pass", opts.Password)
 	}
 	defDB, err = ConnectWithOpts(&opts)
@@ -52,7 +52,7 @@ func requirePostgres(ctx *cli.Context) (err error) {
 		err = teak.LogErrorX("t.pg", "Failed to ping postgres DB", err)
 		return err
 	}
-	teak.Info("t.pg", "Connected to postgres server at %s:%d",
-		opts.Host, opts.Port)
+	teak.Info("t.pg", "Connected to postgres server at %s:%d - to DB: %s",
+		opts.Host, opts.Port, opts.DBName)
 	return err
 }

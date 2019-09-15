@@ -86,6 +86,7 @@ func getAdminCommands() []*cli.Command {
 		dataStorage.Wrap(destroyCmd()),
 		dataStorage.Wrap(setupCmd()),
 		dataStorage.Wrap(resetCmd()),
+		dataStorage.Wrap(isInitCmd()),
 		dataStorage.Wrap(userCmd()),
 	}
 }
@@ -163,29 +164,52 @@ func destroyCmd() *cli.Command {
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
-			// ag := NewArgGetter(ctx)
-			// superID := ag.GetRequiredString("super-id")
-			// if err = ag.Err; err != nil {
-			// 	err = Error("t.store",
-			// 		"Initial super user password does not match")
-			// 	return err
-			// }
-			// superPW := AskPassword("Password")
-			// var user *User
-			// user, err = DoLogin(superID, superPW)
-			// if err != nil {
-			// 	err = fmt.Errorf(
-			// 		"Failed to authenticate super user: %v",
-			// 		err)
-			// 	return err
-			// }
-			// if user.Auth != Super {
-			// 	err = errors.New(
-			// 		"Only super user can destroy the app")
-			// }
+			if init, err := GetStore().IsInitialized(); init {
+				if err != nil {
+					return err
+				}
+				ag := NewArgGetter(ctx)
+				superID := ag.GetRequiredString("super-id")
+				if err = ag.Err; err != nil {
+					err = Error("t.store",
+						"Initial super user password does not match")
+					return err
+				}
+				superPW := AskPassword("Password")
+				var user *User
+				user, err = DoLogin(superID, superPW)
+				if err != nil {
+					err = fmt.Errorf("Failed to authenticate super user: %v",
+						err)
+					return err
+				}
+				if user.Auth != Super {
+					err = errors.New("Only super user can destroy the app")
+					return err
+				}
+			}
 			err = GetStore().Destroy()
 			if err == nil {
 				Info("t.app", "App storage destroyed")
+			}
+			return err
+		},
+	}
+}
+
+func isInitCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "is-init",
+		Usage: "Check if storage is initialized",
+		Flags: []cli.Flag{},
+		Action: func(ctx *cli.Context) (err error) {
+			yes, err := GetStore().IsInitialized()
+			if err != nil {
+				Error("t.app", "Failed to check app init state")
+			} else if yes {
+				Info("t.app", "App is initialized")
+			} else {
+				Info("t.app", "App not initialized")
 			}
 			return err
 		},

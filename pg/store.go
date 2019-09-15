@@ -8,6 +8,7 @@ import (
 	"os/user"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/varunamachi/teak"
 	"gopkg.in/urfave/cli.v1"
@@ -305,6 +306,15 @@ func (pg *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 			"Failed to set initial super user password", err)
 		return err
 	}
+	_, err = defDB.Exec(fmt.Sprintf(`
+			INSERT INTO teak_internal(name, val) VALUES 
+				( 'initialized', '{ "value": true }'),
+				( 'initializedAt', '{ "value": "%s" }')
+		`, time.Now().Format(time.RFC3339)))
+	if err != nil {
+		err = teak.LogErrorX("t.pg.store",
+			"Failed to mark store as initialized", err)
+	}
 	return err
 }
 
@@ -358,8 +368,8 @@ var tables = []struct {
 	{
 		name: "teak_internal",
 		query: `CREATE TABLE teak_internal(
-			key		CHAR(128)	PRIMARY KEY,
-			value	JSONB,
+			name	CHAR(128)	PRIMARY KEY,
+			val		JSONB
 		)`,
 	},
 }
@@ -477,8 +487,36 @@ func (pg *dataStorage) IsInitialized() (yes bool, err error) {
 			"Failed check if store is initialized", err)
 		return yes, err
 	}
-	// query := defDB.Get(&yes, `SELECT initState FROM teak_internal`,
+	err = defDB.Get(&yes,
+		`SELECT val->'value' FROM teak_internal WHERE name = 'initialized'`)
+	if err != nil {
+		teak.Debug("t.pg.store",
+			"Failed to check initialization status of storage %v", err)
+		err = nil
+	}
+	if err == nil {
+
+	}
 	return yes, err
+}
+
+func (pg *dataStorage) InitializedAt() (t time.Time, err error) {
+	str := ""
+	err = defDB.Get(&str,
+		`SELECT val->'value' FROM teak_internal 
+		WHERE name = 'initializedAt'`)
+	if err != nil {
+		err = teak.LogErrorX("t.pg.store", "Failed to get init date", err)
+		return t, err
+	}
+	//Remove the double quotes with -> str[1:len(str)-1]
+	t, err = time.Parse(time.RFC3339, str[1:len(str)-1])
+	if err != nil {
+		err = teak.LogErrorX("t.pg.store",
+			"Failed to parse init date", err)
+		return t, err
+	}
+	return t, err
 }
 
 func (pg *dataStorage) hasTable(tableName string) (yes bool, err error) {

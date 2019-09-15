@@ -99,6 +99,7 @@ func NewApp(
 		LogConsole:  true,
 		FilterLevel: TraceLevel,
 	})
+
 	LoadConfig(name)
 
 	app = &App{
