@@ -20,6 +20,11 @@ func (m *userStorage) CreateUser(user *teak.User) (err error) {
 	if err = m.validateForSuper(user.Auth); err != nil {
 		return err
 	}
+	if err = teak.UpdateUserInfo(user); err != nil {
+		err = teak.LogErrorX("t.user.pg",
+			"Failed to create user, user storage not properly configured", err)
+		return err
+	}
 	query := `
 		INSERT INTO teak_user(
 			id,

@@ -130,20 +130,18 @@ func initCmd() *cli.Command {
 				return err
 			}
 			user := User{
-				ID:         id,
-				Email:      email,
-				Auth:       Super,
-				FirstName:  first,
-				LastName:   last,
-				FullName:   first + " " + last,
-				CreatedAt:  time.Now(),
-				ModifiedAt: time.Now(),
+				ID:        id,
+				Email:     email,
+				Auth:      Super,
+				FirstName: first,
+				LastName:  last,
 				Props: M{
 					"initial": "true",
 				},
 				PwdExpiry: time.Now().AddDate(1, 0, 0),
-				State:     Active,
 			}
+			// UpdateUserInfo(&user)
+			user.State = Active
 			err = GetStore().Init(&user, one, M{})
 			if err == nil {
 				Info("t.app", "App setup successful")
@@ -387,18 +385,16 @@ func createUserCmd() *cli.Command {
 				two := AskPassword("Confirm")
 				if one == two {
 					user := User{
-						ID:         id,
-						Email:      email,
-						Auth:       toRole(roleStr),
-						FirstName:  first,
-						LastName:   last,
-						FullName:   first + " " + last,
-						CreatedAt:  time.Now(),
-						ModifiedAt: time.Now(),
-						Props:      M{},
-						PwdExpiry:  time.Now().AddDate(1, 0, 0),
-						State:      Active,
+						ID:        id,
+						Email:     email,
+						Auth:      toRole(roleStr),
+						FirstName: first,
+						LastName:  last,
+						Props:     M{},
+						PwdExpiry: time.Now().AddDate(1, 0, 0),
 					}
+					// UpdateUserInfo(&user)
+					user.State = Active
 					err = userStorage.CreateUser(&user)
 					if err != nil {
 						//wrap

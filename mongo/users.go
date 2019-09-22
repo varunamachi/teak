@@ -20,6 +20,11 @@ func NewUserStorage() teak.UserStorage {
 
 //CreateUser - creates user in database
 func (m *userStorage) CreateUser(user *teak.User) (err error) {
+	if err = teak.UpdateUserInfo(user); err != nil {
+		err = teak.LogErrorX("t.user.mongo",
+			"Failed to create user, user storage not properly configured", err)
+		return err
+	}
 	conn := DefaultConn()
 	defer conn.Close()
 	if err = m.validateForSuper(conn, user.Auth); err != nil {

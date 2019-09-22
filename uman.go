@@ -168,7 +168,8 @@ func UpdateUserInfo(user *User) (err error) {
 	}
 	user.VerID = uuid.NewV4().String()
 	user.CreatedAt = time.Now()
-	user.State = Disabled
+	user.ModifiedAt = time.Now()
+	// user.State = Disabled
 	user.FullName = user.FirstName + " " + user.LastName
 	// @TODO create a key retrieving strategy -- local | remote etc
 	var emailKey string
@@ -188,7 +189,6 @@ func createUser(ctx echo.Context) (err error) {
 		user.Props = M{
 			"creationMode": "admin",
 		}
-		UpdateUserInfo(&user)
 		err = userStorage.CreateUser(&user)
 		if err != nil {
 			msg = "Failed to create user in database"
@@ -226,7 +226,6 @@ func registerUser(ctx echo.Context) (err error) {
 	err = ctx.Bind(&upw)
 	if err == nil {
 		upw.User.Auth = Normal
-		UpdateUserInfo(&upw.User)
 		err = userStorage.CreateUser(&upw.User)
 		if err != nil {
 			msg = "Failed to register user in database"

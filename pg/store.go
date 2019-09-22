@@ -491,11 +491,8 @@ func (pg *dataStorage) IsInitialized() (yes bool, err error) {
 		`SELECT val->'value' FROM teak_internal WHERE name = 'initialized'`)
 	if err != nil {
 		teak.Debug("t.pg.store",
-			"Failed to check initialization status of storage %v", err)
-		err = nil
-	}
-	if err == nil {
-
+			"Failed to check initialization status of storage: %v", err)
+		yes, err = false, nil
 	}
 	return yes, err
 }
