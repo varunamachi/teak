@@ -333,13 +333,13 @@ func (mds *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 		return err
 	}
 	uStore := NewUserStorage()
-	err = uStore.CreateUser(admin)
+	idHash, err := uStore.CreateUser(admin)
 	if err != nil {
 		err = teak.LogErrorX("t.mongo.store",
 			"Failed to create initial super admin", err)
 		return err
 	}
-	err = uStore.SetPassword(admin.ID, adminPass)
+	err = uStore.SetPassword(idHash, adminPass)
 	if err != nil {
 		err = teak.LogErrorX("t.mongo.store",
 			"Failed to set initial super user password", err)

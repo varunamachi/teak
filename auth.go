@@ -100,8 +100,10 @@ func (a AuthLevel) String() string {
 //UserStorage - interface representing strategy to store and manage user
 //information
 type UserStorage interface {
-	//CreateUser - creates user in database
-	CreateUser(user *User) (err error)
+	//CreateUser - creates user in database, returns the has of the user ID
+	// This returns hash of the user ID which should be used for subsequent
+	// uses
+	CreateUser(user *User) (idHash string, err error)
 
 	//UpdateUser - updates user in database
 	UpdateUser(user *User) (err error)

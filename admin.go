@@ -342,6 +342,7 @@ func userCmd() *cli.Command {
 			*createUserCmd(),
 			*overridePasswordCmd(),
 			*testEMail(),
+			*testLoginCmd(),
 		},
 	}
 }
@@ -395,12 +396,15 @@ func createUserCmd() *cli.Command {
 					}
 					// UpdateUserInfo(&user)
 					user.State = Active
-					err = userStorage.CreateUser(&user)
+					idHash, err := userStorage.CreateUser(&user)
 					if err != nil {
 						//wrap
 						return err
 					}
-					err = userStorage.SetPassword(id, one)
+					err = userStorage.SetPassword(idHash, one)
+					if err == nil {
+						Info("t.uman", "User %s created successfully", id)
+					}
 				}
 			}
 			return err
@@ -545,6 +549,42 @@ func overridePasswordCmd() *cli.Command {
 					Info("t.app",
 						"Password for %s successfully reset", id)
 				}
+			}
+			return err
+		},
+	}
+}
+
+func testLoginCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "login",
+		Usage: "Test login",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "id",
+				Usage: "user ID",
+			},
+			cli.StringFlag{
+				Name:  "password",
+				Usage: "User password",
+			},
+		},
+		Action: func(ctx *cli.Context) (err error) {
+			ag := NewArgGetter(ctx)
+			id := ag.GetRequiredString("id")
+			password := ag.GetOptionalString("password")
+			var user *User
+			if err = ag.Err; err == nil {
+				if password == "" {
+					password = AskPassword("Password")
+				}
+				user, err = DoLogin(id, password)
+				if err != nil {
+					err = LogErrorX("t.app.admin", "Login failed", err)
+					return err
+				}
+				Info("t.uman", "User details: ")
+				DumpJSON(user)
 			}
 			return err
 		},

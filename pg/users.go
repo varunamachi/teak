@@ -16,14 +16,14 @@ func NewUserStorage() teak.UserStorage {
 }
 
 //CreateUser - creates user in database
-func (m *userStorage) CreateUser(user *teak.User) (err error) {
+func (m *userStorage) CreateUser(user *teak.User) (idHash string, err error) {
 	if err = m.validateForSuper(user.Auth); err != nil {
-		return err
+		return "", err
 	}
 	if err = teak.UpdateUserInfo(user); err != nil {
 		err = teak.LogErrorX("t.user.pg",
 			"Failed to create user, user storage not properly configured", err)
-		return err
+		return "", err
 	}
 	query := `
 		INSERT INTO teak_user(
@@ -62,7 +62,7 @@ func (m *userStorage) CreateUser(user *teak.User) (err error) {
 	`
 	//Skipped props for now
 	_, err = defDB.NamedExec(query, user)
-	return teak.LogError("t.user.pg", err)
+	return user.ID, teak.LogError("t.user.pg", err)
 }
 
 //UpdateUser - updates user in database
@@ -171,6 +171,7 @@ func (m *userStorage) SetPassword(userID, newPwd string) (err error) {
 	if err != nil {
 		return err
 	}
+	//TODO - see why is new has is set
 	query := `
 		INSERT INTO user_secret(userID, phash) VALUES($1, $2)
 			ON CONFLICT(userID) DO UPDATE

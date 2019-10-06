@@ -121,8 +121,7 @@ func SendVerificationMail(user *User) (err error) {
 //authenticate a user
 func DefaultAuthenticator(params map[string]interface{}) (
 	user *User, err error) {
-	var userID, password string
-	userID, password, err = GetUserIDPassword(params)
+	userID, password, err := GetUserIDPassword(params)
 	if err == nil {
 		err = GetUserStorage().ValidateUser(userID, password)
 		if err == nil {
@@ -189,7 +188,7 @@ func createUser(ctx echo.Context) (err error) {
 		user.Props = M{
 			"creationMode": "admin",
 		}
-		err = userStorage.CreateUser(&user)
+		_, err = userStorage.CreateUser(&user)
 		if err != nil {
 			msg = "Failed to create user in database"
 			status = http.StatusInternalServerError
@@ -226,13 +225,13 @@ func registerUser(ctx echo.Context) (err error) {
 	err = ctx.Bind(&upw)
 	if err == nil {
 		upw.User.Auth = Normal
-		err = userStorage.CreateUser(&upw.User)
+		idHash, err := userStorage.CreateUser(&upw.User)
 		if err != nil {
 			msg = "Failed to register user in database"
 			status = http.StatusInternalServerError
 		} else {
 
-			err = userStorage.SetPassword(upw.User.ID, upw.Password)
+			err = userStorage.SetPassword(idHash, upw.Password)
 			if err != nil {
 				msg = "Failed to set password"
 				status = http.StatusInternalServerError
