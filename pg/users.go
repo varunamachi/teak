@@ -171,7 +171,7 @@ func (m *userStorage) SetPassword(userID, newPwd string) (err error) {
 	if err != nil {
 		return err
 	}
-	//TODO - see why is new has is set
+	//TODO - see why is new hash is set
 	query := `
 		INSERT INTO user_secret(userID, phash) VALUES($1, $2)
 			ON CONFLICT(userID) DO UPDATE

@@ -160,12 +160,19 @@ func destroyCmd() *cli.Command {
 				Name:  "super-id",
 				Usage: "Unique ID of the admin",
 			},
+			cli.BoolFlag{
+				Name:   "force",
+				Usage:  "Force destroy a corrupted database",
+				Hidden: true,
+			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
-			if init, err := GetStore().IsInitialized(); init {
-				if err != nil {
-					return err
-				}
+			init, err := GetStore().IsInitialized()
+			if err != nil {
+				return err
+			}
+			force := ctx.Bool("force")
+			if !force && init {
 				ag := NewArgGetter(ctx)
 				superID := ag.GetRequiredString("super-id")
 				if err = ag.Err; err != nil {
