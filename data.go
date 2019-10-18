@@ -18,9 +18,9 @@ func GetStore() DataStorage {
 
 //Version - represents version of the application
 type Version struct {
-	Major int `json:"major"`
-	Minor int `json:"minor"`
-	Patch int `json:"patch"`
+	Major int `json:"major" db:"major"`
+	Minor int `json:"minor" db:"minor"`
+	Patch int `json:"patch" db:"patch"`
 }
 
 //String - version to string
@@ -31,8 +31,8 @@ func (v Version) String() string {
 //DateRange - represents date ranges
 type DateRange struct {
 	// Name string    `json:"name" bson:"name"`
-	From time.Time `json:"from"`
-	To   time.Time `json:"to"`
+	From time.Time `json:"from" db:"from"`
+	To   time.Time `json:"to" db:"to"`
 }
 
 //IsValid - returns true if both From and To dates are non-zero
@@ -59,32 +59,32 @@ const (
 
 //Pair - association of key and value
 type Pair struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key   string `json:"key" db:"key"`
+	Value string `json:"value" db:"value"`
 }
 
 //Range - integer range
 type Range struct {
-	Min int `json:"min"`
-	Max int `json:"max"`
+	Min int `json:"min" db:"min"`
+	Max int `json:"max" db:"max"`
 }
 
 //Param - represents generic parameter
 type Param struct {
-	Name    string      `json:"name"`
-	Type    ParamType   `json:"type"`
-	Desc    string      `json:"desc"`
-	Range   Range       `json:"range"`
-	Choices []Pair      `json:"choices"`
-	Default interface{} `json:"def"`
+	Name    string      `json:"name" db:"name"`
+	Type    ParamType   `json:"type" db:"type"`
+	Desc    string      `json:"desc" db:"desc"`
+	Range   Range       `json:"range" db:"range"`
+	Choices []Pair      `json:"choices" db:"choices"`
+	Default interface{} `json:"def" db:"def"`
 	// Value   interface{} `json:"value" bson:"value"`
 }
 
 //CountList - paginated list returned from mongoDB along with total number of
 //items in the list counted without pagination
 type CountList struct {
-	TotalCount int         `json:"total"`
-	Data       interface{} `json:"data"`
+	TotalCount int         `json:"total" db:"total"`
+	Data       interface{} `json:"data" db:"data"`
 }
 
 //FilterType - Type of filter item
@@ -127,16 +127,16 @@ const MatchNone MatchStrategy = "none"
 
 //FilterSpec - filter specification
 type FilterSpec struct {
-	Field string     `json:"field"`
-	Name  string     `json:"name"`
-	Type  FilterType `json:"type"`
+	Field string     `json:"field" db:"field"`
+	Name  string     `json:"name" db:"name"`
+	Type  FilterType `json:"type" db:"type"`
 }
 
 //Matcher - matches the given fields. If multiple fileds are given the; the
 //joining condition is decided by the MatchStrategy given
 type Matcher struct {
-	Strategy MatchStrategy `json:"strategy"`
-	Fields   []interface{} `json:"fields"`
+	Strategy MatchStrategy `json:"strategy" db:"strategy"`
+	Fields   []interface{} `json:"fields" db:"fields"`
 }
 
 //SearchField - contains search string and info for performing the search
@@ -151,11 +151,11 @@ type PropMatcher []interface{}
 
 //Filter - generic filter used to filter data in any mongodb collection
 type Filter struct {
-	Props    map[string]Matcher     `json:"props"`
-	Bools    map[string]interface{} `json:"bools"`
-	Dates    map[string]DateRange   `json:"dates"`
-	Lists    map[string]Matcher     `json:"lists"`
-	Searches map[string]Matcher     `json:"searches"`
+	Props    map[string]Matcher     `json:"props" db:"props"`
+	Bools    map[string]interface{} `json:"bools" db:"bools"`
+	Dates    map[string]DateRange   `json:"dates" db:"dates"`
+	Lists    map[string]Matcher     `json:"lists" db:"lists"`
+	Searches map[string]Matcher     `json:"searches" db:"searches"`
 }
 
 //FilterSpecList - alias for array of filter specs
@@ -163,8 +163,8 @@ type FilterSpecList []*FilterSpec
 
 //FilterVal - values for filter along with the count
 type FilterVal struct {
-	Name  string `json:"name"`
-	Count int    `json:"count"`
+	Name  string `json:"name" db:"name"`
+	Count int    `json:"count" db:"count"`
 }
 
 //DataStorage - defines a data storage

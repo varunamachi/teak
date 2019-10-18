@@ -374,13 +374,13 @@ func (cw *ConsoleWriter) IsEnabled() (value bool) {
 
 //Event - represents a event initiated by a user while performing an operation
 type Event struct {
-	Op       string      `json:"op"`
-	UserID   string      `json:"userID"`
-	UserName string      `json:"userName"`
-	Success  bool        `json:"success"`
-	Error    string      `json:"error"`
-	Time     time.Time   `json:"time"`
-	Data     interface{} `json:"data"`
+	Op       string      `json:"op" db:"op"`
+	UserID   string      `json:"userID" db:"user_id"`
+	UserName string      `json:"userName" db:"user_name"`
+	Success  bool        `json:"success" db:"success"`
+	Error    string      `json:"error" db:"error"`
+	Time     time.Time   `json:"time" db:"time"`
+	Data     interface{} `json:"data" db:"data"`
 }
 
 //EventAuditor - handles application events for audit purposes

@@ -30,34 +30,34 @@ func (m *userStorage) CreateUser(user *teak.User) (idHash string, err error) {
 			id,
 			email,
 			auth,
-			firstName,
-			lastName,
+			first_name,
+			last_name,
 			title,
-			fullName,
+			full_name,
 			state,
-			verID,
-			pwdExpiry,
-			createdAt,
-			createdBy,
-			modifiedAt,
-			modifiedBy,
-			verifiedAt
+			ver_id,
+			pwd_expiry,
+			created_at,
+			created_by,
+			modified_at,
+			modified_by,
+			verified_at
 		) VALUES (
 			:id,
 			:email,
 			:auth,
-			:firstName,
-			:lastName,
+			:first_name,
+			:last_name,
 			:title,
-			:fullName,
+			:full_name,
 			:state,
-			:verID,
-			:pwdExpiry,
-			:createdAt,
-			:createdBy,
-			:modifiedAt,
-			:modifiedBy,
-			:verifiedAt
+			:ver_id,
+			:pwd_expiry,
+			:created_at,
+			:created_by,
+			:modified_at,
+			:modified_by,
+			:verified_at
 		)
 	`
 	//Skipped props for now
@@ -74,18 +74,18 @@ func (m *userStorage) UpdateUser(user *teak.User) (err error) {
 		UPDATE teak_user SET 
 			email = :email,
 			auth = :auth,
-			firstName = :firstName,
-			lastName = :lastName,
+			first_name = :first_name,
+			last_name = :last_name,
 			title = :title,
-			fullName = :fullName,
+			full_name = :full_name,
 			state = :state,
-			verID = :verID,
-			pwdExpiry = :pwdExpiry,
-			createdAt = :createdAt,
-			createdBy = :createdBy,
-			modifiedAt = :modifiedAt,
-			modifiedBy = :modifiedBy,
-			verifiedAt = :verifiedAt,
+			ver_id = :ver_id,
+			pwd_expiry = :pwd_expiry,
+			created_at = :created_at,
+			created_by = :created_by,
+			modified_at = :modified_at,
+			modified_by = :modified_by,
+			verified_at = :verified_at,
 			props = :props
 		WHERE id = :id
 	`
@@ -105,7 +105,8 @@ func (m *userStorage) DeleteUser(userID string) (err error) {
 func (m *userStorage) GetUser(userID string) (user *teak.User, err error) {
 	user = &teak.User{}
 	query := `SELECT * FROM teak_user WHERE id = $1`
-	defDB.Select(user, query, userID)
+	// defDB.Select(user, query, userID)
+	err = defDB.Get(user, query, userID)
 	return user, teak.LogError("t.user.pg", err)
 }
 
@@ -173,8 +174,8 @@ func (m *userStorage) SetPassword(userID, newPwd string) (err error) {
 	}
 	//TODO - see why is new hash is set
 	query := `
-		INSERT INTO user_secret(userID, phash) VALUES($1, $2)
-			ON CONFLICT(userID) DO UPDATE
+		INSERT INTO user_secret(user_id, phash) VALUES($1, $2)
+			ON CONFLICT(user_id) DO UPDATE
 				SET phash = EXCLUDED.phash
 	`
 	_, err = defDB.Exec(query, userID, newHash)
@@ -189,7 +190,7 @@ func (m *userStorage) ValidateUser(userID, password string) (err error) {
 	}()
 	var phash string
 	err = defDB.Get(&phash,
-		`SELECT phash FROM user_secret WHERE userID = $1`, userID)
+		`SELECT phash FROM user_secret WHERE user_id = $1`, userID)
 	if err != nil {
 		return err
 	}
@@ -197,8 +198,10 @@ func (m *userStorage) ValidateUser(userID, password string) (err error) {
 	if err != nil {
 		return err
 	}
-	query := `UPDATE user_secret SET phash = $1 WHERE userID = $2`
-	_, err = defDB.Exec(query, newHash, userID)
+	if newHash != "" {
+		query := `UPDATE user_secret SET phash = $1 WHERE user_id = $2`
+		_, err = defDB.Exec(query, newHash, userID)
+	}
 	return err
 }
 
@@ -258,9 +261,9 @@ func (m *userStorage) VerifyUser(userID, verID string) (err error) {
 	query := `
 		UPDATE teak_user SET 
 			state = $1, 
-			verifiedAt = $2, 
-			verID = ""
-		WHERE id = $3 AND verID = $4
+			verified_at = $2, 
+			ver_id = ""
+		WHERE id = $3 AND ver_id = $4
 	`
 	_, err = defDB.Exec(query, teak.Active, time.Now(), userID, verID)
 	return teak.LogErrorX("t.user.pg", "Failed to verify user with id %s",
@@ -281,12 +284,12 @@ func (m *userStorage) UpdateProfile(user *teak.User) (err error) {
 	query := `
 		UPDATE teak_user SET 
 			email = $1,
-			firstName = $2,
-			lastName = $3,
+			first_name = $2,
+			last_name = $3,
 			title = $4,
-			fullName = $5,
-			modifiedAt = $6,
-			modifiedBy = $7
+			full_name = $5,
+			modified_at = $6,
+			modified_by = $7
 		WHERE id = $8
 	`
 	_, err = defDB.Exec(query,

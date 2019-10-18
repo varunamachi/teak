@@ -2,10 +2,8 @@ package pg
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/jmoiron/sqlx/reflectx"
 	"github.com/varunamachi/teak"
 )
 
@@ -36,9 +34,9 @@ func (c *ConnOpts) String() string {
 func Connect(optStr string) (db *sqlx.DB, err error) {
 	defer teak.LogErrorX("t.pg", "Failed to connect to postgres", err)
 	db, err = sqlx.Open("postgres", optStr)
-	if err == nil {
-		db.Mapper = reflectx.NewMapperFunc("json", strings.ToLower)
-	}
+	// if err == nil {
+	// 	db.Mapper = reflectx.NewMapperFunc("json", strings.ToLower)
+	// }
 	return db, err
 }
 

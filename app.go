@@ -15,10 +15,10 @@ type ModuleConfigFunc func(app *App) (err error)
 
 //Module - represents an application module
 type Module struct {
-	Name         string              `json:"name"`
-	Description  string              `json:"desc"`
-	Endpoints    []*Endpoint         `json:"endpoints"`
-	ItemHandlers []StoredItemHandler `json:"itemHandlers"`
+	Name         string              `json:"name" db:"name"`
+	Description  string              `json:"desc" db:"desc"`
+	Endpoints    []*Endpoint         `json:"endpoints" db:"endpoints"`
+	ItemHandlers []StoredItemHandler `json:"itemHandlers" db:"item_handlers"`
 	Commands     []*cli.Command
 	Initialize   ModuleConfigFunc
 	Setup        ModuleConfigFunc

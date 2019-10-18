@@ -56,28 +56,28 @@ var Flagged UserState = "flagged"
 
 //User - represents an user
 type User struct {
-	ID         string    `json:"id"`
-	Email      string    `json:"email"`
-	Auth       AuthLevel `json:"auth"`
-	FirstName  string    `json:"firstName"`
-	LastName   string    `json:"lastName"`
-	Title      string    `json:"title"`
-	FullName   string    `json:"fullName"`
-	State      UserState `json:"state"`
-	VerID      string    `json:"verID"`
-	PwdExpiry  time.Time `json:"pwdExpiry"`
-	CreatedAt  time.Time `json:"createdAt"`
-	CreatedBy  string    `json:"createdBy"`
-	ModifiedAt time.Time `json:"modifiedAt"`
-	ModifiedBy string    `json:"modifiedBy"`
-	VerfiedAt  time.Time `json:"verifiedAt"`
-	Props      M         `json:"props"`
+	ID         string      `json:"id" db:"id"`
+	Email      string      `json:"email" db:"email"`
+	Auth       AuthLevel   `json:"auth" db:"auth"`
+	FirstName  string      `json:"firstName" db:"first_name"`
+	LastName   string      `json:"lastName" db:"last_name"`
+	Title      string      `json:"title" db:"title"`
+	FullName   string      `json:"fullName" db:"full_name"`
+	State      UserState   `json:"state" db:"state"`
+	VerID      string      `json:"ver_id" db:"ver_id"`
+	PwdExpiry  time.Time   `json:"pwdExpiry" db:"pwd_expiry"`
+	CreatedAt  time.Time   `json:"createdAt" db:"created_at"`
+	CreatedBy  string      `json:"createdBy" db:"created_by"`
+	ModifiedAt time.Time   `json:"modifiedAt" db:"modified_at"`
+	ModifiedBy string      `json:"modifiedBy" db:"modified_by"`
+	VerfiedAt  time.Time   `json:"verifiedAt" db:"verified_at"`
+	Props      interface{} `json:"props,omitempty" db:"props,omitempty"`
 }
 
 //Group - group of users
 type Group struct {
-	Name  string   `json:"name"`
-	Users []string `json:"users"`
+	Name  string   `json:"name" db:"name"`
+	Users []string `json:"users" db:"users"`
 }
 
 func (a AuthLevel) String() string {
