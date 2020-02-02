@@ -365,9 +365,9 @@ func countObjects(ctx echo.Context) (err error) {
 	status, msg := defaultSM("Get All", dtype)
 	count := 0
 	if len(dtype) != 0 {
+		var filter Filter
+		err = LoadJSONFromArgs(ctx, "filter", &filter)
 		if err == nil {
-			var filter Filter
-			err = LoadJSONFromArgs(ctx, "filter", &filter)
 			count, err = dataStorage.Count(dtype, &filter)
 			if err != nil {
 				msg = fmt.Sprintf("Failed to retrieve %s from database", dtype)
