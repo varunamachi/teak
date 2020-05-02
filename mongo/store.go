@@ -167,16 +167,15 @@ func (mds *dataStorage) GetFilterValues(
 		case teak.Date:
 			var drange teak.DateRange
 			err = conn.C(dtype).Pipe([]bson.M{
-				bson.M{
-					"$group": bson.M{
-						"_id": nil,
-						"from": bson.M{
-							"$max": spec.Field,
-						},
-						"to": bson.M{
-							"$min": spec.Field,
-						},
+				{"$group": bson.M{
+					"_id": nil,
+					"from": bson.M{
+						"$max": spec.Field,
 					},
+					"to": bson.M{
+						"$min": spec.Field,
+					},
+				},
 				},
 			}).One(&drange)
 			values[spec.Field] = drange
@@ -202,17 +201,17 @@ func (mds *dataStorage) GetFilterValuesX(
 			switch spec.Type {
 			case teak.Prop:
 				facet[spec.Field] = []bson.M{
-					bson.M{
+					{
 						"$sortByCount": "$" + spec.Field,
 					},
 				}
 			case teak.Array:
 				fd := "$" + spec.Field
 				facet[spec.Field] = []bson.M{
-					bson.M{
+					{
 						"$unwind": fd,
 					},
-					bson.M{
+					{
 						"$sortByCount": fd,
 					},
 				}
@@ -229,10 +228,10 @@ func (mds *dataStorage) GetFilterValuesX(
 	}
 	values = teak.M{}
 	err = conn.C(dtype).Pipe([]bson.M{
-		bson.M{
+		{
 			"$match": selector,
 		},
-		bson.M{
+		{
 			"$facet": facet,
 		},
 	}).One(&values)

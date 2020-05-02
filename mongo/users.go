@@ -267,8 +267,8 @@ func (m *userStorage) VerifyUser(userID, verID string) (err error) {
 	err = conn.C("users").Update(
 		bson.M{
 			"$and": []bson.M{
-				bson.M{"id": userID},
-				bson.M{"verID": verID},
+				{"id": userID},
+				{"verID": verID},
 			},
 		},
 		bson.M{
