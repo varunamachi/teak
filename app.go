@@ -153,10 +153,11 @@ func NewApp(
 //initialization and needs to be called when app/module configuration changes.
 //This is the place where mongoDB indices are expected to be created.
 func (app *App) Setup() (err error) {
-	if err != nil {
-		LogErrorX("t.app.setup", "Failed to setup data storage", err)
-		return err
-	}
+	defer func() {
+		if err != nil {
+			LogErrorX("t.app.setup", "Failed to setup data storage", err)
+		}
+	}()
 	Info("t.app.setup", "Data storage setup succesful")
 
 	for _, module := range app.modules {
@@ -179,10 +180,11 @@ func (app *App) Setup() (err error) {
 //Reset - resets the application and module configuration and data.
 //USE WITH CAUTION
 func (app *App) Reset() (err error) {
-	if err != nil {
-		LogErrorX("t.app.reset", "Failed to reset app", err)
-		return err
-	}
+	defer func() {
+		if err != nil {
+			LogErrorX("t.app.reset", "Failed to reset app", err)
+		}
+	}()
 	for _, module := range app.modules {
 		if module.Reset != nil {
 			err = module.Reset(app)
