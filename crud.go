@@ -11,7 +11,7 @@ import (
 
 func getDataEndpoints() []*Endpoint {
 	return []*Endpoint{
-		&Endpoint{
+		{
 			Method:   echo.POST,
 			URL:      "gen/:dataType",
 			Access:   Normal,
@@ -19,7 +19,7 @@ func getDataEndpoints() []*Endpoint {
 			Func:     createObject,
 			Comment:  "Create a resource of given type",
 		},
-		&Endpoint{
+		{
 			Method:   echo.PUT,
 			URL:      "gen/:dataType",
 			Access:   Normal,
@@ -27,7 +27,7 @@ func getDataEndpoints() []*Endpoint {
 			Func:     updateObject,
 			Comment:  "Update a resource of given type",
 		},
-		&Endpoint{
+		{
 			Method:   echo.DELETE,
 			URL:      "gen/:dataType/:id",
 			Access:   Normal,
@@ -35,7 +35,7 @@ func getDataEndpoints() []*Endpoint {
 			Func:     deleteObject,
 			Comment:  "Delete a resource of given type",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "gen/:dataType/:id",
 			Access:   Monitor,
@@ -43,7 +43,7 @@ func getDataEndpoints() []*Endpoint {
 			Func:     retrieveOne,
 			Comment:  "retrieve a resource of given type",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "gen/:dataType/list",
 			Access:   Monitor,
@@ -51,7 +51,7 @@ func getDataEndpoints() []*Endpoint {
 			Func:     retrieve,
 			Comment:  "Retrieve a resource sub-list of given type",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "gen/:dataType/count",
 			Access:   Monitor,
@@ -59,7 +59,7 @@ func getDataEndpoints() []*Endpoint {
 			Func:     countObjects,
 			Comment:  "Get count of items of data type",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "gen/:dataType",
 			Access:   Monitor,
@@ -67,7 +67,7 @@ func getDataEndpoints() []*Endpoint {
 			Func:     retrieveWithCount,
 			Comment:  "Retrieve a resource sub-list of a type with total count",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "gen/:dataType/fspec",
 			Access:   Monitor,
@@ -75,7 +75,7 @@ func getDataEndpoints() []*Endpoint {
 			Func:     getFilterValues,
 			Comment:  "Get possible values for filter",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "gen/:dataType/fvals/:field",
 			Access:   Monitor,
@@ -83,7 +83,7 @@ func getDataEndpoints() []*Endpoint {
 			Func:     getFilterValuesX,
 			Comment:  "Get possible values for filter",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "gen/:dataType/fvals/",
 			Access:   Monitor,

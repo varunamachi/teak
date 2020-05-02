@@ -15,7 +15,7 @@ var userStorage UserStorage
 
 func getUserManagementEndpoints() []*Endpoint {
 	return []*Endpoint{
-		&Endpoint{
+		{
 			Method:   echo.POST,
 			URL:      "uman/user",
 			Access:   Admin,
@@ -23,7 +23,7 @@ func getUserManagementEndpoints() []*Endpoint {
 			Func:     createUser,
 			Comment:  "Create an user",
 		},
-		&Endpoint{
+		{
 			Method:   echo.PUT,
 			URL:      "uman/user",
 			Access:   Admin,
@@ -31,7 +31,7 @@ func getUserManagementEndpoints() []*Endpoint {
 			Func:     updateUser,
 			Comment:  "Update an user",
 		},
-		&Endpoint{
+		{
 			Method:   echo.DELETE,
 			URL:      "uman/user/:userID",
 			Access:   Admin,
@@ -39,7 +39,7 @@ func getUserManagementEndpoints() []*Endpoint {
 			Func:     deleteUser,
 			Comment:  "Delete an user",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "uman/user/:userID",
 			Access:   Monitor,
@@ -47,7 +47,7 @@ func getUserManagementEndpoints() []*Endpoint {
 			Func:     getUser,
 			Comment:  "Get info about an user",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "uman/user",
 			Access:   Monitor,
@@ -55,7 +55,7 @@ func getUserManagementEndpoints() []*Endpoint {
 			Func:     getUsers,
 			Comment:  "Get list of user & their details",
 		},
-		&Endpoint{
+		{
 			Method:   echo.POST,
 			URL:      "uman/user/password",
 			Access:   Admin,
@@ -63,7 +63,7 @@ func getUserManagementEndpoints() []*Endpoint {
 			Func:     setPassword,
 			Comment:  "Set password for an user",
 		},
-		&Endpoint{
+		{
 			Method:   echo.PUT,
 			URL:      "uman/user/password",
 			Access:   Monitor,
@@ -71,7 +71,7 @@ func getUserManagementEndpoints() []*Endpoint {
 			Func:     resetPassword,
 			Comment:  "Reset password",
 		},
-		&Endpoint{
+		{
 			Method:   echo.POST,
 			URL:      "uman/user/self",
 			Access:   Public,
@@ -79,7 +79,7 @@ func getUserManagementEndpoints() []*Endpoint {
 			Func:     registerUser,
 			Comment:  "Registration for new user",
 		},
-		&Endpoint{
+		{
 			Method:   echo.POST,
 			URL:      "uman/user/verify/:userID/:verID",
 			Access:   Public,
@@ -87,7 +87,7 @@ func getUserManagementEndpoints() []*Endpoint {
 			Func:     verify,
 			Comment:  "Verify a registered account",
 		},
-		&Endpoint{
+		{
 			Method:   echo.PUT,
 			URL:      "/uman/user/self",
 			Access:   Public,

@@ -108,7 +108,7 @@ func NewApp(
 			Commands: make([]cli.Command, 0, 100),
 			Version:  appVersion.String(),
 			Authors: []cli.Author{
-				cli.Author{
+				{
 					Name: "The " + name + " team",
 				},
 			},

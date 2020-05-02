@@ -208,7 +208,7 @@ func GetUserIDPassword(params map[string]interface{}) (
 //GetEndpoints - Export app security related APIs
 func getAuthEndpoints() []*Endpoint {
 	return []*Endpoint{
-		&Endpoint{
+		{
 			Method:   echo.POST,
 			URL:      "login",
 			Category: "security",

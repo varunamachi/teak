@@ -12,7 +12,7 @@ import (
 
 func getAdminEndpoints() []*Endpoint {
 	return []*Endpoint{
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "event",
 			Access:   Admin,
@@ -20,7 +20,7 @@ func getAdminEndpoints() []*Endpoint {
 			Func:     getEvents,
 			Comment:  "Fetch all the events",
 		},
-		&Endpoint{
+		{
 			Method:   echo.GET,
 			URL:      "ping",
 			Access:   Public,
