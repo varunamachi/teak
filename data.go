@@ -23,6 +23,15 @@ type Version struct {
 	Patch int `json:"patch" db:"patch"`
 }
 
+// Ver - quick and dirty way to create a version object
+func Ver(major, minor, patch int) Version {
+	return Version{
+		Major: major,
+		Minor: minor,
+		Patch: patch,
+	}
+}
+
 //String - version to string
 func (v Version) String() string {
 	return fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
