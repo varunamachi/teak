@@ -1,6 +1,7 @@
 package teak
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -34,7 +35,7 @@ func getAdminEndpoints() []*Endpoint {
 func getEvents(ctx echo.Context) (err error) {
 	status, msg := DefMS("Fetch events")
 	var events []*Event
-	var total int
+	var total int64
 	offset, limit, has := GetOffsetLimit(ctx)
 	var filter Filter
 	err = LoadJSONFromArgs(ctx, "filter", &filter)
@@ -58,7 +59,7 @@ func getEvents(ctx echo.Context) (err error) {
 		Msg:    msg,
 		OK:     err == nil,
 		Data: CountList{
-			TotalCount: total,
+			TotalCount: int64(total),
 			Data:       events,
 		},
 		Err: ErrString(err),
@@ -142,7 +143,7 @@ func initCmd() *cli.Command {
 			}
 			// UpdateUserInfo(&user)
 			user.State = Active
-			err = GetStore().Init(&user, one, M{})
+			err = GetStore().Init(context.TODO(), &user, one, M{})
 			if err == nil {
 				Info("t.app", "App setup successful")
 			}
@@ -167,7 +168,7 @@ func destroyCmd() *cli.Command {
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
-			init, err := GetStore().IsInitialized()
+			init, err := GetStore().IsInitialized(context.TODO())
 			if err != nil {
 				return err
 			}
@@ -193,7 +194,7 @@ func destroyCmd() *cli.Command {
 					return err
 				}
 			}
-			err = GetStore().Destroy()
+			err = GetStore().Destroy(context.TODO())
 			if err == nil {
 				Info("t.app", "App storage destroyed")
 			}
@@ -208,7 +209,7 @@ func isInitCmd() *cli.Command {
 		Usage: "Check if storage is initialized",
 		Flags: []cli.Flag{},
 		Action: func(ctx *cli.Context) (err error) {
-			yes, err := GetStore().IsInitialized()
+			yes, err := GetStore().IsInitialized(context.TODO())
 			if err != nil {
 				Error("t.app", "Failed to check app init state")
 			} else if yes {
@@ -271,7 +272,7 @@ func setupCmd() *cli.Command {
 						err = errors.New(
 							"User forcing reset is not a super user")
 					}
-					err = vapp.Setup()
+					err = vapp.Setup(context.TODO())
 				}
 			} else {
 				err = errors.New("V App not properly initialized")
@@ -331,7 +332,7 @@ func resetCmd() *cli.Command {
 						err = errors.New(
 							"User forcing reset is not a super user")
 					}
-					err = vapp.Reset()
+					err = vapp.Reset(context.TODO())
 				}
 			} else {
 				err = errors.New("V App not properly initialized")

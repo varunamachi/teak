@@ -142,7 +142,7 @@ func createObject(ctx echo.Context) (err error) {
 	}
 
 	data = handler.CreateInstance(GetString(ctx, "userID"))
-	err = dataStorage.Create(dtype, data)
+	err = dataStorage.Create(ctx.Request().Context(), dtype, data)
 	if err != nil {
 		msg = fmt.Sprintf("Failed to create item of type '%s' in data store",
 			dtype)
@@ -190,7 +190,8 @@ func updateObject(ctx echo.Context) (err error) {
 	//Get the identifier for the item
 	key := handler.GetKey(data)
 	//And update...
-	err = dataStorage.Update(dtype, handler.UniqueKeyField(), key, data)
+	err = dataStorage.Update(
+		ctx.Request().Context(), dtype, handler.UniqueKeyField(), key, data)
 
 	if err != nil {
 		msg = fmt.Sprintf("Failed to create item of type '%s' in data store",
@@ -225,7 +226,8 @@ func deleteObject(ctx echo.Context) (err error) {
 		return err
 	}
 
-	err = dataStorage.Delete(dtype, handler.UniqueKeyField(), id)
+	err = dataStorage.Delete(
+		ctx.Request().Context(), dtype, handler.UniqueKeyField(), id)
 	if err != nil {
 		msg = fmt.Sprintf("Failed to delete %s from database", dtype)
 		status = http.StatusInternalServerError
@@ -259,7 +261,8 @@ func retrieveOne(ctx echo.Context) (err error) {
 		return err
 	}
 	data = handler.CreateInstance("")
-	err = dataStorage.RetrieveOne(dtype, handler.UniqueKeyField(), id, &data)
+	err = dataStorage.RetrieveOne(
+		ctx.Request().Context(), dtype, handler.UniqueKeyField(), id, &data)
 
 	if err != nil {
 		msg = fmt.Sprintf(
@@ -283,6 +286,7 @@ func retrieve(ctx echo.Context) (err error) {
 		if has && err == nil {
 			data = make([]*M, 0, limit)
 			err = dataStorage.Retrieve(
+				ctx.Request().Context(),
 				dtype,
 				sortField,
 				offset,
@@ -317,7 +321,7 @@ func retrieveWithCount(ctx echo.Context) (err error) {
 	dtype := ctx.Param("dataType")
 	status, msg := defaultSM("Get all with count", dtype)
 	var data []*M
-	cnt := 0
+	cnt := int64(0)
 	if len(dtype) != 0 {
 		offset, limit, has := GetOffsetLimit(ctx)
 		sortField := GetQueryParam(ctx, "sortField", "-createdAt")
@@ -326,6 +330,7 @@ func retrieveWithCount(ctx echo.Context) (err error) {
 		if has && err == nil {
 			data = make([]*M, 0, limit)
 			cnt, err = dataStorage.RetrieveWithCount(
+				ctx.Request().Context(),
 				dtype,
 				sortField,
 				offset,
@@ -363,12 +368,13 @@ func countObjects(ctx echo.Context) (err error) {
 	//@TODO - handle filters
 	dtype := ctx.Param("dataType")
 	status, msg := defaultSM("Get All", dtype)
-	count := 0
+	count := int64(0)
 	if len(dtype) != 0 {
 		var filter Filter
 		err = LoadJSONFromArgs(ctx, "filter", &filter)
 		if err == nil {
-			count, err = dataStorage.Count(dtype, &filter)
+			count, err = dataStorage.Count(
+				ctx.Request().Context(), dtype, &filter)
 			if err != nil {
 				msg = fmt.Sprintf("Failed to retrieve %s from database", dtype)
 				status = http.StatusInternalServerError
@@ -401,7 +407,8 @@ func getFilterValues(ctx echo.Context) (err error) {
 	if len(dtype) != 0 {
 		err = LoadJSONFromArgs(ctx, "fspec", &fspec)
 		if err == nil {
-			values, err = dataStorage.GetFilterValues(dtype, fspec)
+			values, err = dataStorage.GetFilterValues(
+				ctx.Request().Context(), dtype, fspec)
 		} else {
 			msg = "Failed to load filter description from URL"
 			status = http.StatusBadRequest
@@ -434,7 +441,7 @@ func getFilterValuesX(ctx echo.Context) (err error) {
 		err2 := LoadJSONFromArgs(ctx, "filter", &filter)
 		if !HasError("V:Generic", err1, err2) {
 			values, err = dataStorage.GetFilterValuesX(
-				dtype, field, fspec, &filter)
+				ctx.Request().Context(), dtype, field, fspec, &filter)
 		} else {
 			msg = "Failed to load filter description from URL"
 			err = errors.New(msg)

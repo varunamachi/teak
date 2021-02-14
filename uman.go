@@ -359,7 +359,8 @@ func getUsers(ctx echo.Context) (err error) {
 	var filter Filter
 	err = LoadJSONFromArgs(ctx, "filter", &filter)
 	if has && err == nil {
-		total, users, err = userStorage.GetUsersWithCount(offset, limit, &filter)
+		total, users, err = userStorage.GetUsersWithCount(
+			offset, limit, &filter)
 		if err != nil {
 			msg = "Failed to retrieve user info from database"
 			status = http.StatusInternalServerError
@@ -378,7 +379,7 @@ func getUsers(ctx echo.Context) (err error) {
 		Msg:    msg,
 		OK:     err == nil,
 		Data: CountList{
-			TotalCount: total,
+			TotalCount: int64(total),
 			Data:       users,
 		},
 		Err: ErrString(err),

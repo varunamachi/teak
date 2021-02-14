@@ -1,6 +1,7 @@
 package mongo
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -19,52 +20,52 @@ func NewUserStorage() teak.UserStorage {
 }
 
 //CreateUser - creates user in database
-func (m *userStorage) CreateUser(user *teak.User) (idHash string, err error) {
-	if err = teak.UpdateUserInfo(user); err != nil {
+func (m *userStorage) CreateUser(
+	gtx context.Context,
+	user *teak.User) (string, error) {
+	if err := teak.UpdateUserInfo(user); err != nil {
 		err = teak.LogErrorX("t.user.mongo",
 			"Failed to create user, user storage not properly configured", err)
 		return "", err
 	}
-	conn := DefaultConn()
-	defer conn.Close()
-	if err = m.validateForSuper(conn, user.Auth); err != nil {
+	if err := m.validateForSuper(gtx, user.Auth); err != nil {
 		return "", err
 	}
-	err = conn.C("users").Insert(user)
+	_, err := C("users").InsertOne(gtx, user)
 	return user.ID, teak.LogError("t.user.mongo", err)
 }
 
 //UpdateUser - updates user in database
-func (m *userStorage) UpdateUser(user *teak.User) (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
-	if err = m.validateForSuper(conn, user.Auth); err != nil {
+func (m *userStorage) UpdateUser(
+	gtx context.Context, user *teak.User) error {
+	if err := m.validateForSuper(gtx, user.Auth); err != nil {
 		return err
 	}
-	err = conn.C("users").Update(bson.M{"id": user.ID}, user)
+	_, err := C("users").UpdateOne(gtx, bson.M{"id": user.ID}, user)
 	return teak.LogError("t.user.mongo", err)
 }
 
 //DeleteUser - deletes user with given user ID
-func (m *userStorage) DeleteUser(userID string) (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C("users").Remove(bson.M{"id": userID})
+func (m *userStorage) DeleteUser(
+	gtx context.Context, userID string) error {
+	_, err := C("users").DeleteOne(gtx, bson.M{"id": userID})
 	return teak.LogError("t.user.mongo", err)
 }
 
 //GetUser - gets details of the user corresponding to ID
-func (m *userStorage) GetUser(userID string) (user *teak.User, err error) {
-	conn := DefaultConn()
-	user = &teak.User{}
-	defer conn.Close()
-	err = conn.C("users").Find(bson.M{"id": userID}).One(user)
-	return user, teak.LogError("t.user.mongo", err)
+func (m *userStorage) GetUser(gtx context.Context,
+	userID string) (*teak.User, error) {
+	user := &teak.User{}
+	res := C("users").FindOne(gtx, bson.M{"id": userID})
+	if err := res.Decode(user); err != nil {
+		return nil, teak.LogError("t.user.mongo", err)
+	}
+	return user, nil
 }
 
 //GetUsers - gets all users based on offset, limit and filter
 func (m *userStorage) GetUsers(offset, limit int, filter *teak.Filter) (
-	users []*teak.User, err error) {
+	[]*teak.User, error) {
 	conn := DefaultConn()
 	defer conn.Close()
 	selector := generateSelector(filter)
@@ -223,12 +224,12 @@ func (m *userStorage) SetAuthLevel(
 }
 
 func (m *userStorage) validateForSuper(
-	conn *Conn, alevel teak.AuthLevel) (err error) {
+	gtx context.Context,
+	alevel teak.AuthLevel) error {
 	if alevel != teak.Super {
-		return err //no error
+		return nil
 	}
-	var count int
-	count, err = conn.C("users").Find(bson.M{"auth": 0}).Count()
+	count, err := C("users").CountDocuments(gtx, bson.M{"auth": 0})
 	if err != nil {
 		err = teak.LogErrorX("t.user.mongo",
 			"Failed to get number of super admins", err)

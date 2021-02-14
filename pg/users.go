@@ -12,7 +12,9 @@ type userStorage struct{}
 
 //NewUserStorage - creates a new user storage based on postgres
 func NewUserStorage() teak.UserStorage {
-	return &userStorage{}
+	// return &userStorage{}
+	// TODO - make dataStorage satisfy teak.UserStorage interface
+	return nil
 }
 
 //CreateUser - creates user in database

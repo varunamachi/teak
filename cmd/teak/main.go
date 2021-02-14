@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -21,7 +22,8 @@ func main() {
 	)
 	app.Commands = append(
 		app.Commands,
-		*teak.GetStore().Wrap(teak.GetServiceStartCmd(teak.Serve)))
-	app.Exec(os.Args)
+		*teak.GetStore().Wrap(context.Background(),
+			teak.GetServiceStartCmd(teak.Serve)))
+	app.Exec(context.TODO(), os.Args)
 
 }

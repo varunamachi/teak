@@ -1,6 +1,8 @@
 package mongo
 
 import (
+	"context"
+
 	"github.com/varunamachi/teak"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -26,16 +28,10 @@ func NewDefaultApp(
 //mongoFlags - flags to get mongo connection options
 var mongoFlags = []cli.Flag{
 	cli.StringFlag{
-		Name:   "mongo-host",
-		Value:  "localhost",
-		Usage:  "Address of the host running mongodb",
-		EnvVar: "MONGO_HOST",
-	},
-	cli.IntFlag{
-		Name:   "mongo-port",
-		Value:  27017,
-		Usage:  "Port on which Mongodb is listening",
-		EnvVar: "MONGO_PORT",
+		Name:   "mongo-url",
+		Value:  "localhost:27017",
+		Usage:  "Address and port running mongodb instance",
+		EnvVar: "MONGO_URL",
 	},
 	cli.StringFlag{
 		Name:   "mongo-user",
@@ -51,32 +47,25 @@ var mongoFlags = []cli.Flag{
 	},
 }
 
-func requireMongo(ctx *cli.Context) (err error) {
+func requireMongo(gtx context.Context, ctx *cli.Context) (err error) {
 	ag := teak.NewArgGetter(ctx)
 	var opts ConnOpts
 	if !teak.GetConfig("mongo.opts", &opts) {
-		opts.Host = ag.GetRequiredString("mongo-host")
-		opts.Port = ag.GetRequiredInt("mongo-port")
+		url := ag.GetRequiredString("mongo-url")
+		opts.URLs = []string{url}
 		opts.User = ag.GetOptionalString("mongo-user")
 		if len(opts.User) != 0 {
 			opts.Password = ag.GetRequiredSecret("mongo-pass")
 		}
 	} else {
 		teak.Info("t.mongo", "Read mongo options from app config")
-		opts.Host = ag.GetStringOr("mongo-host", opts.Host)
-		opts.Port = ag.GetIntOr("mongo-port", opts.Port)
-		opts.User = ag.GetStringOr("mongo-user", opts.User)
-		opts.Password = ag.GetSecretOr("mongo-pass", opts.Password)
 	}
-	err = ConnectSingle(&opts)
+	err = Connect(gtx, &opts)
 	if err != nil {
 		err = teak.LogErrorX("t.pg",
-			"Failed to open MongoDB connection to '%s'",
-			err,
-			opts.Host)
+			"Failed to open MongoDB connection to '%s'", err, opts)
 		return err
 	}
-	teak.Info("t.mongo", "Connected to mongoDB server at %s:%d",
-		opts.Host, opts.Port)
+	teak.Info("t.mongo", "Connected to mongoDB server at %s", opts)
 	return err
 }

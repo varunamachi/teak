@@ -115,16 +115,16 @@ type UserStorage interface {
 	GetUser(userID string) (user *User, err error)
 
 	//GetAllUsers - gets all users based on offset and limit
-	GetUsers(offset int,
-		limit int,
+	GetUsers(offset,
+		limit int64,
 		filter *Filter) (users []*User, err error)
 
 	//GetCount - gives the number of user selected by given filter
 	GetCount(filter *Filter) (count int, err error)
 
 	//GetUsersWithCount - gives a list of users paged with total count
-	GetUsersWithCount(offset int,
-		limit int,
+	GetUsersWithCount(offset,
+		limit int64,
 		filter *Filter) (total int, users []*User, err error)
 
 	//ResetPassword - sets password of a unauthenticated user

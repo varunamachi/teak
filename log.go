@@ -389,9 +389,9 @@ type EventAuditor interface {
 	LogEvent(event *Event)
 
 	//GetEvents - retrieves event entries based on filters
-	GetEvents(offset, limit int,
+	GetEvents(offset, limit int64,
 		filter *Filter) (
-		total int,
+		total int64,
 		events []*Event,
 		err error)
 

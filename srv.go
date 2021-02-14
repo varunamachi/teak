@@ -479,7 +479,7 @@ func Merge(epss ...[]*Endpoint) (eps []*Endpoint) {
 //GetOffsetLimit - retrieves offset and limit as integers provided in URL as
 //query parameters. These parameters should have name - offset and limit
 //respectively
-func GetOffsetLimit(ctx echo.Context) (offset, limit int, has bool) {
+func GetOffsetLimit(ctx echo.Context) (offset, limit int64, has bool) {
 	has = false
 	offset = 0
 	limit = 0
@@ -491,12 +491,12 @@ func GetOffsetLimit(ctx echo.Context) (offset, limit int, has bool) {
 		return
 	}
 	var err error
-	offset, err = strconv.Atoi(strOffset)
+	offset, err = strconv.ParseInt(strOffset, 10, 64)
 	if err != nil {
 		offset = 0
 		return
 	}
-	limit, err = strconv.Atoi(strLimit)
+	limit, err = strconv.ParseInt(strLimit, 10, 64)
 	if err != nil {
 		limit = 0
 		return

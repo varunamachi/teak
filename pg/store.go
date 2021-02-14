@@ -36,7 +36,9 @@ type dataStorage struct{}
 
 //NewStorage - creates a new mongodb based data storage implementation
 func NewStorage() teak.DataStorage {
-	return &dataStorage{}
+	// TODO - update the data store to satisfy the DataStorage interface
+	// return &dataStorage{}
+	return nil
 }
 
 func (pg *dataStorage) Name() string {

@@ -1,6 +1,7 @@
 package teak
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 
 //ModuleConfigFunc Signature used by functions that are used to configure a
 //module. Some config callbacks include - initialize, setup, reset etc
-type ModuleConfigFunc func(app *App) (err error)
+type ModuleConfigFunc func(gtx context.Context, app *App) (err error)
 
 //Module - represents an application module
 type Module struct {
@@ -49,10 +50,10 @@ func (app *App) AddModule(module *Module) {
 }
 
 //Exec - runs the applications
-func (app *App) Exec(args []string) (err error) {
+func (app *App) Exec(gtx context.Context, args []string) (err error) {
 	for _, module := range app.modules {
 		if module.Initialize != nil {
-			err = module.Initialize(app)
+			err = module.Initialize(gtx, app)
 			if err != nil {
 				Error("App", "Failed to initialize module %s",
 					module.Name)
@@ -135,15 +136,15 @@ func NewApp(
 		ItemHandlers: []StoredItemHandler{
 			&UserHandler{},
 		},
-		Initialize: func(app *App) error {
+		Initialize: func(gtx context.Context, app *App) error {
 			// return dataStorage.Init()
 			return nil
 		},
-		Setup: func(app *App) error {
-			return dataStorage.Setup(nil)
+		Setup: func(gtx context.Context, app *App) error {
+			return dataStorage.Setup(gtx, nil)
 		},
-		Reset: func(app *App) error {
-			return dataStorage.Reset()
+		Reset: func(gtx context.Context, app *App) error {
+			return dataStorage.Reset(gtx)
 		},
 	})
 	return app
@@ -152,7 +153,7 @@ func NewApp(
 //Setup - sets up the application and the registered module. This is not
 //initialization and needs to be called when app/module configuration changes.
 //This is the place where mongoDB indices are expected to be created.
-func (app *App) Setup() (err error) {
+func (app *App) Setup(gtx context.Context) (err error) {
 	defer func() {
 		if err != nil {
 			LogErrorX("t.app.setup", "Failed to setup data storage", err)
@@ -162,7 +163,7 @@ func (app *App) Setup() (err error) {
 
 	for _, module := range app.modules {
 		if module.Setup != nil {
-			err = module.Setup(app)
+			err = module.Setup(gtx, app)
 			if err != nil {
 				Error("t.app.setup", "Failed to set module %s up",
 					module.Name)
@@ -179,7 +180,7 @@ func (app *App) Setup() (err error) {
 
 //Reset - resets the application and module configuration and data.
 //USE WITH CAUTION
-func (app *App) Reset() (err error) {
+func (app *App) Reset(gtx context.Context) (err error) {
 	defer func() {
 		if err != nil {
 			LogErrorX("t.app.reset", "Failed to reset app", err)
@@ -187,7 +188,7 @@ func (app *App) Reset() (err error) {
 	}()
 	for _, module := range app.modules {
 		if module.Reset != nil {
-			err = module.Reset(app)
+			err = module.Reset(gtx, app)
 			if err != nil {
 				Error("t.app.reset", "Failed to reset module %s",
 					module.Name)

@@ -1,6 +1,7 @@
 package teak
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -92,7 +93,7 @@ type Param struct {
 //CountList - paginated list returned from mongoDB along with total number of
 //items in the list counted without pagination
 type CountList struct {
-	TotalCount int         `json:"total" db:"total"`
+	TotalCount int64       `json:"total" db:"total"`
 	Data       interface{} `json:"data" db:"data"`
 }
 
@@ -179,49 +180,64 @@ type FilterVal struct {
 //DataStorage - defines a data storage
 type DataStorage interface {
 	Name() string
-	Count(dtype string, filter *Filter) (count int, err error)
-	Create(dataType string, data interface{}) error
+	Count(
+		gtx context.Context,
+		dtype string,
+		filter *Filter) (count int64, err error)
+	Create(
+		gtx context.Context,
+		dataType string,
+		data interface{}) error
 	Update(
+		gtx context.Context,
 		dataType string,
 		keyField string,
 		key interface{},
 		data interface{}) error
 	Delete(
+		gtx context.Context,
 		dataType string,
 		keyField string,
 		key interface{}) error
 	RetrieveOne(
+		gtx context.Context,
 		dataType string,
 		keyField string,
 		key interface{},
 		data interface{}) error
-	Retrieve(dtype string,
+	Retrieve(
+		gtx context.Context,
+		dtype string,
 		sortFiled string,
-		offset int,
-		limit int,
+		offset int64,
+		limit int64,
 		filter *Filter,
 		out interface{}) error
-	RetrieveWithCount(dtype string,
+	RetrieveWithCount(
+		gtx context.Context,
+		dtype string,
 		sortFiled string,
-		offset int,
-		limit int,
+		offset int64,
+		limit int64,
 		filter *Filter,
-		out interface{}) (count int, err error)
+		out interface{}) (count int64, err error)
 	GetFilterValues(
+		gtx context.Context,
 		dtype string,
 		specs FilterSpecList) (values M, err error)
 	GetFilterValuesX(
+		gtx context.Context,
 		dtype string,
 		field string,
 		specs FilterSpecList,
 		filter *Filter) (values M, err error)
 
-	IsInitialized() (yes bool, err error)
-	Init(admin *User, adminPass string, param M) error
-	Setup(params M) error
-	Reset() error
-	Destroy() error
-	Wrap(cmd *cli.Command) *cli.Command
+	IsInitialized(gtx context.Context) (yes bool, err error)
+	Init(gtx context.Context, admin *User, adminPass string, param M) error
+	Setup(gtx context.Context, params M) error
+	Reset(gtx context.Context) error
+	Destroy(gtx context.Context) error
+	AppendConnFlags(flags ...cli.Flag) []cli.Flag
 	GetManageCommands() []cli.Command
 }
 

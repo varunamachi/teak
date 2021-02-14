@@ -1,12 +1,15 @@
 package mongo
 
 import (
+	"context"
 	"runtime"
+	"strings"
 
 	"github.com/jinzhu/now"
 	"github.com/varunamachi/teak"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -15,13 +18,15 @@ type dataStorage struct{}
 
 //NewStorage - creates a new mongodb based data storage implementation
 func NewStorage() teak.DataStorage {
-	return &dataStorage{}
+	// return &dataStorage{}
+	// TODO - make dataStorage satisfy teak.DataStorage interface
+	return nil
 }
 
 //logMongoError - if error is not mog.ErrNotFound return null otherwise log the
 //error and return the given error
 func logMongoError(module string, err error) (out error) {
-	if err != nil && err != mgo.ErrNotFound {
+	if err != nil && err != mongo.ErrNoDocuments {
 		_, file, line, _ := runtime.Caller(1)
 		teak.Error(module, "%s -- %s @ %d",
 			err.Error(),
@@ -40,133 +45,144 @@ func (mds *dataStorage) Name() string {
 
 //Create - creates an record in 'dtype' collection
 func (mds *dataStorage) Create(
-	dtype string, value interface{}) (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C(dtype).Insert(value)
-	return logMongoError("DB:Mongo", err)
+	gtx context.Context,
+	dtype string, value interface{}) error {
+	_, err := C(dtype).InsertOne(gtx, value)
+	return logMongoError("t.mongo.data", err)
 }
 
 //Update - updates the records in 'dtype' collection which are matched by
 //the matcher query
 func (mds *dataStorage) Update(
+	gtx context.Context,
 	dtype string,
 	keyField string,
 	key interface{},
-	value interface{}) (err error) {
+	value interface{}) error {
 
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C(dtype).Update(bson.M{
+	_, err := C(dtype).UpdateOne(gtx, bson.M{
 		keyField: key,
 	}, value)
-	return logMongoError("DB:Mongo", err)
+	return logMongoError("t.mongo.store", err)
 }
 
 //Delete - deletes record matched by the matcher from collection 'dtype'
 func (mds *dataStorage) Delete(
+	gtx context.Context,
 	dtype string,
 	keyField string,
-	key interface{}) (err error) {
+	key interface{}) error {
 
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C(dtype).Remove(bson.M{
+	_, err := C(dtype).DeleteOne(gtx, bson.M{
 		keyField: key,
 	})
-	return logMongoError("DB:Mongo", err)
+	return logMongoError("t.mongo.store", err)
 }
 
 //RetrieveOne - gets a record matched by given matcher from collection 'dtype'
 func (mds *dataStorage) RetrieveOne(
+	gtx context.Context,
 	dtype string,
 	keyField string,
 	key interface{},
-	out interface{}) (err error) {
+	out interface{}) error {
 
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C(dtype).Find(bson.M{
+	res := C(dtype).FindOne(gtx, bson.M{
 		keyField: key,
-	}).One(out)
-	return logMongoError("DB:Mongo", err)
+	})
+	var err error
+	if err = res.Err(); err == nil {
+		err = res.Decode(out)
+	}
+	return logMongoError("t.mongo.store", err)
 }
 
 //Count - counts the number of items for data type
 func (mds *dataStorage) Count(
-	dtype string, filter *teak.Filter) (count int, err error) {
+	gtx context.Context,
+	dtype string,
+	filter *teak.Filter) (int64, error) {
 	//@TODO handle filters
-	conn := DefaultConn()
-	defer conn.Close()
 	selector := generateSelector(filter)
-	count, err = conn.C(dtype).
-		Find(selector).
-		Count()
-	return count, logMongoError("DB:Mongo", err)
+	count, err := C(dtype).CountDocuments(gtx, selector)
+	return count, logMongoError("t.mongo.store", err)
 }
 
 //Retrieve - gets all the items from collection 'dtype' selected by filter &
 //paged
 func (mds *dataStorage) Retrieve(
+	gtx context.Context,
 	dtype string,
-	sortFiled string,
-	offset int,
-	limit int,
+	sortField string,
+	offset int64,
+	limit int64,
 	filter *teak.Filter,
-	out interface{}) (err error) {
+	out interface{}) error {
 	selector := generateSelector(filter)
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C(dtype).
-		Find(selector).
-		Sort(sortFiled).
-		Skip(offset).
-		Limit(limit).
-		All(out)
-	return logMongoError("DB:Mongo", err)
+	fopts := options.Find().
+		SetSkip(offset).
+		SetLimit(limit).
+		SetSort(getSort(sortField))
+	cur, err := C(dtype).Find(gtx, selector, fopts)
+	if err != nil {
+		return logMongoError("t.mongo.store", err)
+	}
+	defer cur.Close(gtx)
+	err = cur.All(gtx, out)
+	return logMongoError("t.mongo.store", err)
 }
 
 //RetrieveWithCount - gets all the items from collection 'dtype' selected by
 //filter & paged also gives the total count of items selected by filter
 func (mds *dataStorage) RetrieveWithCount(
+	gtx context.Context,
 	dtype string,
-	sortFiled string,
-	offset int,
-	limit int,
+	sortField string,
+	offset int64,
+	limit int64,
 	filter *teak.Filter,
-	out interface{}) (count int, err error) {
-	conn := DefaultConn()
-	defer conn.Close()
+	out interface{}) (int64, error) {
 	selector := generateSelector(filter)
-	q := conn.C(dtype).Find(selector)
-	count, err = q.Count()
-	if err == nil {
-		err = q.Sort(sortFiled).
-			Skip(offset).
-			Limit(limit).
-			All(out)
+	fopts := options.Find().
+		SetSkip(offset).
+		SetLimit(limit).
+		SetSort(getSort(sortField))
+	cur, err := C(dtype).Find(gtx, selector, fopts)
+	if err != nil {
+		return 0, logMongoError("t.mongo.store", err)
 	}
-	return count, logMongoError("DB:Mongo", err)
+	defer cur.Close(gtx)
+	err = cur.All(gtx, out)
+	if err != nil {
+		return 0, logMongoError("t.mongo.store", err)
+	}
+
+	count, err := C(dtype).CountDocuments(gtx, selector)
+	return count, logMongoError("t.mongo.store", err)
 }
 
 //GetFilterValues - provides values associated the fields defined in filter spec
 func (mds *dataStorage) GetFilterValues(
+	gtx context.Context,
 	dtype string,
 	specs teak.FilterSpecList) (values teak.M, err error) {
-	conn := DefaultConn()
-	defer conn.Close()
 	values = teak.M{}
 	for _, spec := range specs {
 		switch spec.Type {
 		case teak.Prop:
 			fallthrough
 		case teak.Array:
-			props := make([]string, 0, 100)
-			err = conn.C(dtype).Find(nil).Distinct(spec.Field, &props)
+			// props := make([]string, 0, 100)
+			var props []interface{}
+			props, err = C(dtype).Distinct(gtx, spec.Field, bson.D{})
+			if err != nil {
+				break
+			}
 			values[spec.Field] = props
 		case teak.Date:
 			var drange teak.DateRange
-			err = conn.C(dtype).Pipe([]bson.M{
+			var cur *mongo.Cursor
+			cur, err = C(dtype).Aggregate(gtx, []bson.M{
 				{"$group": bson.M{
 					"_id": nil,
 					"from": bson.M{
@@ -177,24 +193,29 @@ func (mds *dataStorage) GetFilterValues(
 					},
 				},
 				},
-			}).One(&drange)
+			})
+			if err == nil && cur.Next(gtx) {
+				err = cur.Decode(&drange)
+			}
+			if err != nil {
+				break
+			}
 			values[spec.Field] = drange
 		case teak.Boolean:
 		case teak.Search:
 		case teak.Static:
 		}
 	}
-	return values, logMongoError("DB:Mongo", err)
+	return values, logMongoError("t.mongo.store", err)
 }
 
 //GetFilterValuesX - get values for filter based on given filter
 func (mds *dataStorage) GetFilterValuesX(
+	gtx context.Context,
 	dtype string,
 	field string,
 	specs teak.FilterSpecList,
 	filter *teak.Filter) (values teak.M, err error) {
-	conn := DefaultConn()
-	defer conn.Close()
 	facet := teak.M{}
 	for _, spec := range specs {
 		if spec.Field != field {
@@ -227,15 +248,19 @@ func (mds *dataStorage) GetFilterValuesX(
 		selector = generateSelector(filter)
 	}
 	values = teak.M{}
-	err = conn.C(dtype).Pipe([]bson.M{
+	cur, err := C(dtype).Aggregate(gtx, []bson.M{
 		{
 			"$match": selector,
 		},
 		{
 			"$facet": facet,
 		},
-	}).One(&values)
-	return values, logMongoError("DB:Mongo", err)
+	})
+	if err != nil {
+		return nil, logMongoError("t.mongo.store", err)
+	}
+	err = cur.All(gtx, &values)
+	return values, logMongoError("t.mongo.store", err)
 }
 
 //GenerateSelector - creates mongodb query for a generic filter
@@ -365,22 +390,26 @@ func (mds *dataStorage) Destroy() (err error) {
 	return err
 }
 
-//Wrap - wraps a command with flags required to connect to this data source
-func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
-	cmd.Flags = append(cmd.Flags, mongoFlags...)
-	if cmd.Before == nil {
-		cmd.Before = requireMongo
-	} else {
-		otherBefore := cmd.Before
-		cmd.Before = func(ctx *cli.Context) (err error) {
-			err = requireMongo(ctx)
-			if err == nil {
-				err = otherBefore(ctx)
-			}
-			return err
-		}
-	}
-	return cmd
+// //Wrap - wraps a command with flags required to connect to this data source
+// func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
+// 	cmd.Flags = append(cmd.Flags, mongoFlags...)
+// 	if cmd.Before == nil {
+// 		cmd.Before = requireMongo
+// 	} else {
+// 		otherBefore := cmd.Before
+// 		cmd.Before = func(ctx *cli.Context) (err error) {
+// 			err = requireMongo(ctx)
+// 			if err == nil {
+// 				err = otherBefore(ctx)
+// 			}
+// 			return err
+// 		}
+// 	}
+// 	return cmd
+// }
+
+func (mds *dataStorage) AppendConnFlags(flags ...cli.Flag) []cli.Flag {
+	return append(flags, mongoFlags...)
 }
 
 //GetManageCommands - commands that can be used to manage this data storage
@@ -392,4 +421,15 @@ func (mds *dataStorage) GetManageCommands() (commands []cli.Command) {
 func (mds *dataStorage) IsInitialized() (yes bool, err error) {
 	yes = true
 	return yes, err
+}
+
+// GetSort - get sort statement for the field
+func GetSort(sortField string) bson.D {
+	sortDir := 1
+	if strings.HasPrefix(sortField, "-") {
+		sortDir = -1
+		sortField = sortField[1:]
+	}
+	return bson.D{{sortField, sortDir}}
+
 }
