@@ -1,6 +1,7 @@
 package teak
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -103,89 +104,94 @@ type UserStorage interface {
 	//CreateUser - creates user in database, returns the has of the user ID
 	// This returns hash of the user ID which should be used for subsequent
 	// uses
-	CreateUser(user *User) (idHash string, err error)
+	CreateUser(gtx context.Context, user *User) (idHash string, err error)
 
 	//UpdateUser - updates user in database
-	UpdateUser(user *User) (err error)
+	UpdateUser(gtx context.Context, user *User) (err error)
 
 	//DeleteUser - deletes user with given user ID
-	DeleteUser(userID string) (err error)
+	DeleteUser(gtx context.Context, userID string) (err error)
 
 	//GetUser - gets details of the user corresponding to ID
-	GetUser(userID string) (user *User, err error)
+	GetUser(gtx context.Context, userID string) (user *User, err error)
 
 	//GetAllUsers - gets all users based on offset and limit
-	GetUsers(offset,
+	GetUsers(
+		gtx context.Context,
+		offset,
 		limit int64,
 		filter *Filter) (users []*User, err error)
 
 	//GetCount - gives the number of user selected by given filter
-	GetCount(filter *Filter) (count int, err error)
+	GetCount(gtx context.Context, filter *Filter) (count int, err error)
 
 	//GetUsersWithCount - gives a list of users paged with total count
-	GetUsersWithCount(offset,
+	GetUsersWithCount(
+		gtx context.Context,
+		offset,
 		limit int64,
 		filter *Filter) (total int, users []*User, err error)
 
 	//ResetPassword - sets password of a unauthenticated user
-	ResetPassword(userID, oldPwd, newPwd string) (err error)
+	ResetPassword(gtx context.Context, userID, oldPwd, newPwd string) (err error)
 
 	//SetPassword - sets password of a already authenticated user, old password
 	//is not required
-	SetPassword(userID, newPwd string) (err error)
+	SetPassword(gtx context.Context, userID, newPwd string) (err error)
 
 	//ValidateUser - validates user ID and password
-	ValidateUser(userID, password string) (err error)
+	ValidateUser(gtx context.Context, userID, password string) (err error)
 
 	//GetUserAuthLevel - gets user authorization level
-	GetUserAuthLevel(userID string) (level AuthLevel, err error)
+	GetUserAuthLevel(gtx context.Context, userID string) (level AuthLevel, err error)
 
 	//CreateSuperUser - creates the first super user for the application
 	// CreateSuperUser(user *User, password string) (err error)
 
 	//SetAuthLevel - sets the auth level for the user
-	SetAuthLevel(userID string, authLevel AuthLevel) (err error)
+	SetAuthLevel(gtx context.Context, userID string, authLevel AuthLevel) (err error)
 
 	//SetUserState - sets state of an user account
-	SetUserState(userID string, state UserState) (err error)
+	SetUserState(gtx context.Context, userID string, state UserState) (err error)
 
 	//VerifyUser - sets state of an user account to verified based on userID
 	//and verification ID
-	VerifyUser(userID, verID string) (err error)
+	VerifyUser(gtx context.Context, userID, verID string) (err error)
 
 	//UpdateProfile - updates user details - this should be used when user
 	//logged in is updating own user account
-	UpdateProfile(user *User) (err error)
+	UpdateProfile(gtx context.Context, user *User) (err error)
 }
 
 //Authenticator - a function that is used to authenticate an user. The function
 //takes map of parameters contents of which will differ based on actual function
 //used
-type Authenticator func(params map[string]interface{}) (*User, error)
+type Authenticator func(
+	gtx context.Context, params map[string]interface{}) (*User, error)
 
 //Authorizer - a function that will be used authorize an user
-type Authorizer func(userID string) (AuthLevel, error)
+type Authorizer func(gtx context.Context, userID string) (AuthLevel, error)
 
 //NoOpAuthenticator - authenticator that does not do anything
-func NoOpAuthenticator(params map[string]interface{}) (*User, error) {
+func NoOpAuthenticator(
+	gtx context.Context, params map[string]interface{}) (*User, error) {
 	return nil, nil
 }
 
 //NoOpAuthorizer - authorizer that does not do anything
-func NoOpAuthorizer(userID string) (AuthLevel, error) {
+func NoOpAuthorizer(gtx context.Context, userID string) (AuthLevel, error) {
 	return Public, nil
 }
 
-func dummyAuthenticator(params map[string]interface{}) (
+func dummyAuthenticator(gtx context.Context, params map[string]interface{}) (
 	user *User, err error) {
 	user = nil
 	err = errors.New("No valid authenticator found")
 	return user, err
 }
 
-func dummyAuthorizer(userID string) (role AuthLevel, err error) {
-	err = errors.New("No valid authorizer found")
-	return role, err
+func dummyAuthorizer(gtx context.Context, userID string) (AuthLevel, error) {
+	return Public, errors.New("No valid authorizer found")
 }
 
 //GetUserIDPassword - gets userID and password from parameter app, if not
@@ -234,7 +240,7 @@ func login(ctx echo.Context) (err error) {
 		var user *User
 		userID = creds["userID"]
 		name = userID
-		user, err = DoLogin(userID, creds["password"])
+		user, err = DoLogin(ctx.Request().Context(), userID, creds["password"])
 		if err == nil {
 			if user.State == Active {
 				token := jwt.New(jwt.SigningMethodHS256)

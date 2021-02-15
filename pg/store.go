@@ -1,6 +1,7 @@
 package pg
 
 import (
+	"context"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -276,7 +277,8 @@ func (pg *dataStorage) GetFilterValuesX(
 
 //Init - initialize the data storage for the first time, sets it upda and also
 //creates the first admin user. Data store can be initialized only once
-func (pg *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
+func (pg *dataStorage) Init(
+	gtx context.Context, admin *teak.User, adminPass string, param teak.M) (
 	err error) {
 	val, err := pg.IsInitialized()
 	if err != nil {
@@ -296,13 +298,13 @@ func (pg *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 		return err
 	}
 	uStore := NewUserStorage()
-	idHash, err := uStore.CreateUser(admin)
+	idHash, err := uStore.CreateUser(gtx, admin)
 	if err != nil {
 		err = teak.LogErrorX("t.pg.store",
 			"Failed to create initial super admin", err)
 		return err
 	}
-	err = uStore.SetPassword(idHash, adminPass)
+	err = uStore.SetPassword(gtx, idHash, adminPass)
 	if err != nil {
 		err = teak.LogErrorX("t.pg.store",
 			"Failed to set initial super user password", err)

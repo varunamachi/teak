@@ -1,6 +1,7 @@
 package teak
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -119,13 +120,13 @@ func SendVerificationMail(user *User) (err error) {
 
 //DefaultAuthenticator - authenticator that uses applications UserStorage to
 //authenticate a user
-func DefaultAuthenticator(params map[string]interface{}) (
+func DefaultAuthenticator(gtx context.Context, params map[string]interface{}) (
 	user *User, err error) {
 	userID, password, err := GetUserIDPassword(params)
 	if err == nil {
-		err = GetUserStorage().ValidateUser(userID, password)
+		err = GetUserStorage().ValidateUser(gtx, userID, password)
 		if err == nil {
-			user, err = GetUserStorage().GetUser(userID)
+			user, err = GetUserStorage().GetUser(gtx, userID)
 		}
 	}
 	return user, LogError("t.auth.default", err)
@@ -188,7 +189,7 @@ func createUser(ctx echo.Context) (err error) {
 		user.Props = M{
 			"creationMode": "admin",
 		}
-		_, err = userStorage.CreateUser(&user)
+		_, err = userStorage.CreateUser(ctx.Request().Context(), &user)
 		if err != nil {
 			msg = "Failed to create user in database"
 			status = http.StatusInternalServerError
@@ -225,13 +226,15 @@ func registerUser(ctx echo.Context) (err error) {
 	err = ctx.Bind(&upw)
 	if err == nil {
 		upw.User.Auth = Normal
-		idHash, err := userStorage.CreateUser(&upw.User)
+		idHash, err := userStorage.CreateUser(
+			ctx.Request().Context(), &upw.User)
 		if err != nil {
 			msg = "Failed to register user in database"
 			status = http.StatusInternalServerError
 		} else {
 
-			err = userStorage.SetPassword(idHash, upw.Password)
+			err = userStorage.SetPassword(
+				ctx.Request().Context(), idHash, upw.Password)
 			if err != nil {
 				msg = "Failed to set password"
 				status = http.StatusInternalServerError
@@ -265,7 +268,7 @@ func updateUser(ctx echo.Context) (err error) {
 	var user User
 	err = ctx.Bind(&user)
 	if err == nil {
-		err = userStorage.UpdateUser(&user)
+		err = userStorage.UpdateUser(ctx.Request().Context(), &user)
 		if err != nil {
 			msg = "Failed to update user in database"
 			status = http.StatusInternalServerError
@@ -289,7 +292,7 @@ func deleteUser(ctx echo.Context) (err error) {
 	status, msg := DefMS("Delete User")
 	userID := ctx.Param("userID")
 	var user *User
-	user, err = userStorage.GetUser(userID)
+	user, err = userStorage.GetUser(ctx.Request().Context(), userID)
 	if err == nil {
 		curID := GetString(ctx, "userID")
 		if userID == curID {
@@ -300,7 +303,7 @@ func deleteUser(ctx echo.Context) (err error) {
 			status = http.StatusBadRequest
 			err = errors.New(msg)
 		} else {
-			err = userStorage.DeleteUser(userID)
+			err = userStorage.DeleteUser(ctx.Request().Context(), userID)
 			if err != nil {
 				msg = "Failed to delete user from database"
 				status = http.StatusInternalServerError
@@ -330,7 +333,7 @@ func getUser(ctx echo.Context) (err error) {
 	userID := ctx.Param("userID")
 	var user *User
 	if len(userID) == 0 {
-		user, err = userStorage.GetUser(userID)
+		user, err = userStorage.GetUser(ctx.Request().Context(), userID)
 		if err != nil {
 			msg = "Failed to retrieve user info from database"
 			status = http.StatusInternalServerError
@@ -360,7 +363,7 @@ func getUsers(ctx echo.Context) (err error) {
 	err = LoadJSONFromArgs(ctx, "filter", &filter)
 	if has && err == nil {
 		total, users, err = userStorage.GetUsersWithCount(
-			offset, limit, &filter)
+			ctx.Request().Context(), offset, limit, &filter)
 		if err != nil {
 			msg = "Failed to retrieve user info from database"
 			status = http.StatusInternalServerError
@@ -394,7 +397,7 @@ func setPassword(ctx echo.Context) (err error) {
 	userID, ok1 := pinfo["userID"]
 	password, ok2 := pinfo["password"]
 	if err == nil && ok1 && ok2 {
-		err = userStorage.SetPassword(userID, password)
+		err = userStorage.SetPassword(ctx.Request().Context(), userID, password)
 		if err != nil {
 			msg = "Failed to set password in database"
 			status = http.StatusInternalServerError
@@ -422,7 +425,8 @@ func resetPassword(ctx echo.Context) (err error) {
 	oldPassword, ok2 := pinfo["oldPassword"]
 	newPassword, ok3 := pinfo["newPassword"]
 	if err == nil && ok2 && ok3 && len(userID) != 0 {
-		err = userStorage.ResetPassword(userID, oldPassword, newPassword)
+		err = userStorage.ResetPassword(
+			ctx.Request().Context(), userID, oldPassword, newPassword)
 		if err != nil {
 			msg = "Failed to reset password in database"
 			status = http.StatusInternalServerError
@@ -449,9 +453,10 @@ func verify(ctx echo.Context) (err error) {
 	verID := ctx.Param("verID")
 	err = ctx.Bind(&params)
 	if len(userID) > 0 && len(verID) > 0 && err == nil {
-		err = userStorage.VerifyUser(userID, verID)
+		err = userStorage.VerifyUser(ctx.Request().Context(), userID, verID)
 		if err == nil {
-			err = userStorage.SetPassword(userID, params["password"])
+			err = userStorage.SetPassword(
+				ctx.Request().Context(), userID, params["password"])
 			if err != nil {
 				msg = "Failed to set password"
 				status = http.StatusInternalServerError
@@ -486,7 +491,7 @@ func updateProfile(ctx echo.Context) (err error) {
 	sessionUserID := GetString(ctx, "userID")
 	err = ctx.Bind(&user)
 	if err == nil && sessionUserID == user.ID {
-		err = userStorage.UpdateProfile(&user)
+		err = userStorage.UpdateProfile(ctx.Request().Context(), &user)
 		if err != nil {
 			msg = "Failed to update profile in database"
 			status = http.StatusInternalServerError

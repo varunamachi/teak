@@ -1,6 +1,7 @@
 package teak
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -129,14 +130,15 @@ func authMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 //DoLogin - performs login using username and password
-func DoLogin(userID string, password string) (*User, error) {
+func DoLogin(
+	gtx context.Context, userID string, password string) (*User, error) {
 	//Check for password expiry and stuff
 	params := make(map[string]interface{})
 	params["userID"] = userID
 	params["password"] = password
-	user, err := authenticator(params)
+	user, err := authenticator(gtx, params)
 	if err == nil && authorizer != nil {
-		user.Auth, err = authorizer(user.ID)
+		user.Auth, err = authorizer(gtx, user.ID)
 	}
 	return user, err
 }
@@ -526,13 +528,13 @@ func GetServiceStartCmd(serveFunc func(port int) error) *cli.Command {
 	return &cli.Command{
 		Name:  "serve",
 		Usage: "Starts the HTTP service",
-		Flags: []cli.Flag{
+		Flags: GetStore().WithFlags(
 			cli.IntFlag{
 				Name:  "port",
 				Value: 8000,
 				Usage: "Port at which the service needs to serve",
 			},
-		},
+		),
 		Action: func(ctx *cli.Context) (err error) {
 			ag := NewArgGetter(ctx)
 			port := ag.GetRequiredInt("port")

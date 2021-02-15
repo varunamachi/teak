@@ -83,12 +83,12 @@ func ping(ctx echo.Context) (err error) {
 //getAdminCommands - gives commands related to HTTP networking
 func getAdminCommands() []*cli.Command {
 	return []*cli.Command{
-		dataStorage.Wrap(initCmd()),
-		dataStorage.Wrap(destroyCmd()),
-		dataStorage.Wrap(setupCmd()),
-		dataStorage.Wrap(resetCmd()),
-		dataStorage.Wrap(isInitCmd()),
-		dataStorage.Wrap(userCmd()),
+		initCmd(),
+		destroyCmd(),
+		setupCmd(),
+		resetCmd(),
+		isInitCmd(),
+		userCmd(),
 	}
 }
 
@@ -96,7 +96,7 @@ func initCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "init",
 		Usage: "Initialize application",
-		Flags: []cli.Flag{
+		Flags: dataStorage.WithFlags(
 			cli.StringFlag{
 				Name:  "super-id",
 				Usage: "Unique ID of the admin",
@@ -113,7 +113,7 @@ func initCmd() *cli.Command {
 				Name:  "last",
 				Usage: "Last name of the admin",
 			},
-		},
+		),
 		Action: func(ctx *cli.Context) (err error) {
 			ag := NewArgGetter(ctx)
 			id := ag.GetRequiredString("super-id")
@@ -156,7 +156,7 @@ func destroyCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "destroy",
 		Usage: "Destroy application, data source etc",
-		Flags: []cli.Flag{
+		Flags: dataStorage.WithFlags(
 			cli.StringFlag{
 				Name:  "super-id",
 				Usage: "Unique ID of the admin",
@@ -166,7 +166,7 @@ func destroyCmd() *cli.Command {
 				Usage:  "Force destroy a corrupted database",
 				Hidden: true,
 			},
-		},
+		),
 		Action: func(ctx *cli.Context) (err error) {
 			init, err := GetStore().IsInitialized(context.TODO())
 			if err != nil {
@@ -183,7 +183,7 @@ func destroyCmd() *cli.Command {
 				}
 				superPW := AskPassword("Password")
 				var user *User
-				user, err = DoLogin(superID, superPW)
+				user, err = DoLogin(context.TODO(), superID, superPW)
 				if err != nil {
 					err = fmt.Errorf("Failed to authenticate super user: %v",
 						err)
@@ -207,7 +207,7 @@ func isInitCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "is-init",
 		Usage: "Check if storage is initialized",
-		Flags: []cli.Flag{},
+		Flags: dataStorage.WithFlags(),
 		Action: func(ctx *cli.Context) (err error) {
 			yes, err := GetStore().IsInitialized(context.TODO())
 			if err != nil {
@@ -226,7 +226,7 @@ func setupCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "setup",
 		Usage: "Sets up the application",
-		Flags: []cli.Flag{
+		Flags: dataStorage.WithFlags(
 			cli.StringFlag{
 				Name:  "super-id",
 				Usage: "Super user ID",
@@ -235,7 +235,7 @@ func setupCmd() *cli.Command {
 				Name:  "super-pw",
 				Usage: "Super user password",
 			},
-		},
+		),
 		Action: func(ctx *cli.Context) (err error) {
 			vapp := GetAppReference(ctx)
 			var user *User
@@ -261,7 +261,7 @@ func setupCmd() *cli.Command {
 					if len(superPW) == 0 {
 						superPW = AskPassword("Super-user Password")
 					}
-					user, err = DoLogin(superID, superPW)
+					user, err = DoLogin(context.TODO(), superID, superPW)
 					if err != nil {
 						err = fmt.Errorf(
 							"Failed to authenticate super user: %v",
@@ -286,7 +286,7 @@ func resetCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "reset",
 		Usage: "Resets the application",
-		Flags: []cli.Flag{
+		Flags: dataStorage.WithFlags(
 			cli.StringFlag{
 				Name:  "super-id",
 				Usage: "Super user ID",
@@ -295,7 +295,7 @@ func resetCmd() *cli.Command {
 				Name:  "super-pw",
 				Usage: "Super user password",
 			},
-		},
+		),
 		Action: func(ctx *cli.Context) (err error) {
 			vapp := GetAppReference(ctx)
 			var user *User
@@ -321,7 +321,7 @@ func resetCmd() *cli.Command {
 					if len(superPW) == 0 {
 						superPW = AskPassword("Super-user Password")
 					}
-					user, err = DoLogin(superID, superPW)
+					user, err = DoLogin(context.TODO(), superID, superPW)
 					if err != nil {
 						err = fmt.Errorf(
 							"Failed to authenticate super user: %v",
@@ -404,12 +404,14 @@ func createUserCmd() *cli.Command {
 					}
 					// UpdateUserInfo(&user)
 					user.State = Active
-					idHash, err := userStorage.CreateUser(&user)
+					idHash, err := userStorage.CreateUser(
+						context.TODO(),
+						&user)
 					if err != nil {
 						//wrap
 						return err
 					}
-					err = userStorage.SetPassword(idHash, one)
+					err = userStorage.SetPassword(context.TODO(), idHash, one)
 					if err == nil {
 						Info("t.uman", "User %s created successfully", id)
 					}
@@ -468,7 +470,7 @@ func setRoleCmd() *cli.Command {
 				if len(adminPW) == 0 {
 					adminPW = AskPassword("Admin Password")
 				}
-				user, err = DoLogin(adminID, adminPW)
+				user, err = DoLogin(context.TODO(), adminID, adminPW)
 				if err != nil {
 					err = LogErrorX("t.app.admin",
 						"Failed to authenticate admin user: %s",
@@ -482,7 +484,8 @@ func setRoleCmd() *cli.Command {
 						adminID)
 					return err
 				}
-				err = GetUserStorage().SetAuthLevel(id, toRole(roleStr))
+				err = GetUserStorage().SetAuthLevel(
+					context.TODO(), id, toRole(roleStr))
 			}
 			return LogErrorX("t.app",
 				"Failed to set role for user %s", err, id)
@@ -543,7 +546,7 @@ func overridePasswordCmd() *cli.Command {
 				if len(superPW) == 0 {
 					superPW = AskPassword("Super-user Password")
 				}
-				user, err = DoLogin(superID, superPW)
+				user, err = DoLogin(context.TODO(), superID, superPW)
 				if err != nil {
 					err = fmt.Errorf("Failed to authenticate super user: %v",
 						err)
@@ -552,7 +555,7 @@ func overridePasswordCmd() *cli.Command {
 				if user.Auth != Super {
 					err = errors.New("User forcing reset is not a super user")
 				}
-				err = userStorage.SetPassword(id, pw)
+				err = userStorage.SetPassword(context.TODO(), id, pw)
 				if err == nil {
 					Info("t.app",
 						"Password for %s successfully reset", id)
@@ -586,7 +589,7 @@ func testLoginCmd() *cli.Command {
 				if password == "" {
 					password = AskPassword("Password")
 				}
-				user, err = DoLogin(id, password)
+				user, err = DoLogin(context.TODO(), id, password)
 				if err != nil {
 					err = LogErrorX("t.app.admin", "Login failed", err)
 					return err

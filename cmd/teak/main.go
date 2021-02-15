@@ -22,8 +22,7 @@ func main() {
 	)
 	app.Commands = append(
 		app.Commands,
-		*teak.GetStore().Wrap(context.Background(),
-			teak.GetServiceStartCmd(teak.Serve)))
+		*teak.GetServiceStartCmd(teak.Serve))
 	app.Exec(context.TODO(), os.Args)
 
 }

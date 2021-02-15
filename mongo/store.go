@@ -18,9 +18,8 @@ type dataStorage struct{}
 
 //NewStorage - creates a new mongodb based data storage implementation
 func NewStorage() teak.DataStorage {
-	// return &dataStorage{}
+	return &dataStorage{}
 	// TODO - make dataStorage satisfy teak.DataStorage interface
-	return nil
 }
 
 //logMongoError - if error is not mog.ErrNotFound return null otherwise log the
@@ -122,7 +121,7 @@ func (mds *dataStorage) Retrieve(
 	fopts := options.Find().
 		SetSkip(offset).
 		SetLimit(limit).
-		SetSort(getSort(sortField))
+		SetSort(GetSort(sortField))
 	cur, err := C(dtype).Find(gtx, selector, fopts)
 	if err != nil {
 		return logMongoError("t.mongo.store", err)
@@ -146,7 +145,7 @@ func (mds *dataStorage) RetrieveWithCount(
 	fopts := options.Find().
 		SetSkip(offset).
 		SetLimit(limit).
-		SetSort(getSort(sortField))
+		SetSort(GetSort(sortField))
 	cur, err := C(dtype).Find(gtx, selector, fopts)
 	if err != nil {
 		return 0, logMongoError("t.mongo.store", err)
@@ -337,9 +336,12 @@ func generateSelector(
 
 //Init - initialize the data storage for the first time, sets it upda and also
 //creates the first admin user. Data store can be initialized only once
-func (mds *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
-	err error) {
-	val, err := mds.IsInitialized()
+func (mds *dataStorage) Init(
+	gtx context.Context,
+	admin *teak.User,
+	adminPass string,
+	param teak.M) error {
+	val, err := mds.IsInitialized(gtx)
 	if err != nil {
 		err = teak.LogErrorX("t.mongo.store",
 			"Failed to check initialization status of PG store", err)
@@ -351,19 +353,19 @@ func (mds *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 			"If you want to update the structure of the store, use Setup")
 		return err
 	}
-	err = mds.Setup(teak.M{})
+	err = mds.Setup(gtx, teak.M{})
 	if err != nil {
 		err = teak.LogErrorX("t.mongo.store", "Failed to setup app", err)
 		return err
 	}
 	uStore := NewUserStorage()
-	idHash, err := uStore.CreateUser(admin)
+	idHash, err := uStore.CreateUser(gtx, admin)
 	if err != nil {
 		err = teak.LogErrorX("t.mongo.store",
 			"Failed to create initial super admin", err)
 		return err
 	}
-	err = uStore.SetPassword(idHash, adminPass)
+	err = uStore.SetPassword(gtx, idHash, adminPass)
 	if err != nil {
 		err = teak.LogErrorX("t.mongo.store",
 			"Failed to set initial super user password", err)
@@ -374,19 +376,19 @@ func (mds *dataStorage) Init(admin *teak.User, adminPass string, param teak.M) (
 
 //Setup - setup has to be run when data storage structure changes, such as
 //adding index, altering tables etc
-func (mds *dataStorage) Setup(params teak.M) (err error) {
+func (mds *dataStorage) Setup(gtx context.Context, params teak.M) (err error) {
 	//Setup indices for user collection
 	//Setup indices for event collection
 	return err
 }
 
 //Reset - reset clears the data without affecting the structure/schema
-func (mds *dataStorage) Reset() (err error) {
+func (mds *dataStorage) Reset(gtx context.Context) (err error) {
 	return err
 }
 
 //Destroy - deletes data and also structure
-func (mds *dataStorage) Destroy() (err error) {
+func (mds *dataStorage) Destroy(gtx context.Context) (err error) {
 	return err
 }
 
@@ -408,7 +410,7 @@ func (mds *dataStorage) Destroy() (err error) {
 // 	return cmd
 // }
 
-func (mds *dataStorage) AppendConnFlags(flags ...cli.Flag) []cli.Flag {
+func (mds *dataStorage) WithFlags(flags ...cli.Flag) []cli.Flag {
 	return append(flags, mongoFlags...)
 }
 
@@ -418,9 +420,8 @@ func (mds *dataStorage) GetManageCommands() (commands []cli.Command) {
 }
 
 //IsInitialized - tells if data source is initialized
-func (mds *dataStorage) IsInitialized() (yes bool, err error) {
-	yes = true
-	return yes, err
+func (mds *dataStorage) IsInitialized(gtx context.Context) (bool, error) {
+	return true, nil
 }
 
 // GetSort - get sort statement for the field

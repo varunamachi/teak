@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/varunamachi/teak"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/hlandau/passlib.v1"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 //userStorage - mongodb storage for user information
@@ -64,68 +65,72 @@ func (m *userStorage) GetUser(gtx context.Context,
 }
 
 //GetUsers - gets all users based on offset, limit and filter
-func (m *userStorage) GetUsers(offset, limit int, filter *teak.Filter) (
-	[]*teak.User, error) {
-	conn := DefaultConn()
-	defer conn.Close()
+func (m *userStorage) GetUsers(
+	gtx context.Context,
+	offset, limit int64,
+	filter *teak.Filter) ([]*teak.User, error) {
 	selector := generateSelector(filter)
-	users = make([]*teak.User, 0, limit)
-	err = conn.C("users").
-		Find(selector).
-		Sort("-created").
-		Skip(offset).
-		Limit(limit).
-		All(&users)
+	users := make([]*teak.User, 0, limit)
+	fopts := options.Find().SetSkip(offset).SetLimit(limit)
+	cur, err := C("users").Find(gtx, selector, fopts)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(gtx)
+	err = cur.All(gtx, &users)
 	return users, teak.LogError("t.user.mongo", err)
 }
 
 //GetCount - gives the number of user selected by given filter
-func (m *userStorage) GetCount(filter *teak.Filter) (count int, err error) {
-	conn := DefaultConn()
-	defer conn.Close()
+func (m *userStorage) GetCount(
+	gtx context.Context, filter *teak.Filter) (int64, error) {
 	selector := generateSelector(filter)
-	count, err = conn.C("users").Find(selector).Count()
+	count, err := C("users").CountDocuments(gtx, selector)
 	return count, teak.LogError("t.user.mongo", err)
 }
 
 //GetUsersWithCount - Get users with total count
 func (m *userStorage) GetUsersWithCount(
-	offset, limit int, filter *teak.Filter) (
-	total int, users []*teak.User, err error) {
-	conn := DefaultConn()
-	defer conn.Close()
+	gtx context.Context,
+	offset, limit int64,
+	filter *teak.Filter) (int64, []*teak.User, error) {
 	var selector bson.M
 	selector = generateSelector(filter)
-	users = make([]*teak.User, 0, limit)
-	q := conn.C("users").Find(selector).Sort("-created")
-	total, err = q.Count()
-	if err == nil {
-		err = q.Skip(offset).Limit(limit).All(&users)
+	users := make([]*teak.User, 0, limit)
+
+	fopts := options.Find().
+		SetSkip(offset).
+		SetLimit(limit).
+		SetSort(GetSort("-created"))
+	cur, err := C("users").Find(gtx, selector, fopts)
+	if err != nil {
+		return 0, nil, teak.LogError("t.user.mongo", err)
 	}
-	return total, users, teak.LogError("t.user.mongo", err)
+	err = cur.All(gtx, &users)
+	if err != nil {
+		return 0, nil, teak.LogError("t.user.mongo", err)
+	}
+
+	count, err := C("users").CountDocuments(gtx, selector)
+	if err != nil {
+		return 0, nil, teak.LogError("t.user.mongo", err)
+	}
+	return count, users, nil
 }
 
 //ResetPassword - sets password of a unauthenticated user
 func (m *userStorage) ResetPassword(
-	userID, oldPwd, newPwd string) (err error) {
-	conn := DefaultConn()
-	defer func() {
-		conn.Close()
-		teak.LogError("t.user.mongo", err)
-	}()
-	if err != nil {
-		return err
-	}
+	gtx context.Context, userID, oldPwd, newPwd string) error {
 	var newHash string
-	newHash, err = passlib.Hash(newPwd)
+	newHash, err := passlib.Hash(newPwd)
 	if err != nil {
 		return err
 	}
-	if err = m.ValidateUser(userID, oldPwd); err != nil {
-		err = errors.New("Could not match old password")
-		return err
+	if err = m.ValidateUser(gtx, userID, oldPwd); err != nil {
+		return errors.New("Could not match old password")
 	}
-	err = conn.C("secret").Update(
+	_, err = C("secret").UpdateOne(
+		gtx,
 		bson.M{
 			"userID": userID,
 		},
@@ -135,59 +140,69 @@ func (m *userStorage) ResetPassword(
 			},
 		},
 	)
-	return teak.LogError("UMan:Mongo", err)
+	return teak.LogError("t.user.mongo", err)
 }
 
 //SetPassword - sets password of a already authenticated user, old password
 //is not required
-func (m *userStorage) SetPassword(userID, newPwd string) (err error) {
+func (m *userStorage) SetPassword(
+	gtx context.Context, userID, newPwd string) (err error) {
 	var newHash string
 	newHash, err = passlib.Hash(newPwd)
-	if err == nil {
-		conn := DefaultConn()
-		defer conn.Close()
-		m.setPasswordHash(conn, userID, newHash)
+	if err != nil {
+		return teak.LogError("t.user.mongo", err)
 	}
-	return teak.LogError("UMan:Mongo", err)
+	m.setPasswordHash(gtx, userID, newHash)
+	return teak.LogError("t.user.mongo", err)
 }
 
-func (m *userStorage) setPasswordHash(conn *Conn,
-	userID, hash string) (err error) {
-	_, err = conn.C("secret").Upsert(
-		bson.M{
-			"userID": userID,
-		},
-		bson.M{
-			"$set": bson.M{
-				"userID": userID,
-				"phash":  hash,
-			},
-		})
-	return err
+func (m *userStorage) setPasswordHash(
+	gtx context.Context, userID, hash string) (err error) {
+	// _, err = C("secret").Upsert(
+	// 	bson.M{
+	// 		"userID": userID,
+	// 	},
+	// 	bson.M{
+	// 		"$set": bson.M{
+	// 			"userID": userID,
+	// 			"phash":  hash,
+	// 		},
+	// 	})
+	// return err
+	return nil
 }
 
 //ValidateUser - validates user ID and password
-func (m *userStorage) ValidateUser(userID, password string) (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
+func (m *userStorage) ValidateUser(
+	gtx context.Context, userID, password string) error {
+
 	secret := bson.M{}
-	err = conn.C("secret").
-		Find(bson.M{"userID": userID}).
-		Select(bson.M{"phash": 1, "_id": 0}).
-		One(&secret)
-	if err == nil {
-		storedHash, ok := secret["phash"].(string)
-		if ok {
-			var newHash string
-			newHash, err = passlib.Verify(password, storedHash)
-			if err == nil && newHash != "" {
-				err = m.setPasswordHash(conn, userID, newHash)
-			}
-		} else {
-			err = errors.New("Failed to varify password")
-		}
+	fopts := options.Find().SetProjection(bson.M{"phash": 1, "_id": 0})
+	res := C("secret").FindOne(gtx, bson.M{"userID": userID}, fopts)
+
+	if err := res.Err(); err != nil {
+		return teak.LogError("t.user.mongo", err)
 	}
-	return teak.LogError("UMan:Mongo", err)
+
+	err := res.Decode(&secret)
+	if err != nil {
+		return teak.LogError("t.user.mongo", err)
+	}
+
+	storedHash, ok := secret["phash"].(string)
+	if !ok {
+		return errors.New("Failed to varify password")
+	}
+
+	newHash, err := passlib.Verify(password, storedHash)
+	if err != nil {
+		return teak.LogError("t.user.mongo", err)
+	}
+
+	if newHash != "" {
+		err = m.setPasswordHash(gtx, userID, newHash)
+	}
+	return teak.LogError("t.user.mongo", err)
 }
 
 //GetUserAuthLevel - gets user authorization level

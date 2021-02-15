@@ -237,7 +237,7 @@ type DataStorage interface {
 	Setup(gtx context.Context, params M) error
 	Reset(gtx context.Context) error
 	Destroy(gtx context.Context) error
-	AppendConnFlags(flags ...cli.Flag) []cli.Flag
+	WithFlags(flags ...cli.Flag) []cli.Flag
 	GetManageCommands() []cli.Command
 }
 
