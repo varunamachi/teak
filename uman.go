@@ -358,7 +358,7 @@ func getUsers(ctx echo.Context) (err error) {
 	offset, limit, has := GetOffsetLimit(ctx)
 	// us := GetFirstValidStr(ctx.Param("status"), string(Active))
 	var users []*User
-	var total int
+	var total int64
 	var filter Filter
 	err = LoadJSONFromArgs(ctx, "filter", &filter)
 	if has && err == nil {

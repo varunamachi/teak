@@ -123,17 +123,18 @@ type UserStorage interface {
 		filter *Filter) (users []*User, err error)
 
 	//GetCount - gives the number of user selected by given filter
-	GetCount(gtx context.Context, filter *Filter) (count int, err error)
+	GetCount(gtx context.Context, filter *Filter) (count int64, err error)
 
 	//GetUsersWithCount - gives a list of users paged with total count
 	GetUsersWithCount(
 		gtx context.Context,
 		offset,
 		limit int64,
-		filter *Filter) (total int, users []*User, err error)
+		filter *Filter) (total int64, users []*User, err error)
 
 	//ResetPassword - sets password of a unauthenticated user
-	ResetPassword(gtx context.Context, userID, oldPwd, newPwd string) (err error)
+	ResetPassword(
+		gtx context.Context, userID, oldPwd, newPwd string) (err error)
 
 	//SetPassword - sets password of a already authenticated user, old password
 	//is not required

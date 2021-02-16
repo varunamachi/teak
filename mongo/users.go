@@ -9,7 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/hlandau/passlib.v1"
-	"gopkg.in/mgo.v2"
 )
 
 //userStorage - mongodb storage for user information
@@ -177,7 +176,7 @@ func (m *userStorage) ValidateUser(
 	gtx context.Context, userID, password string) error {
 
 	secret := bson.M{}
-	fopts := options.Find().SetProjection(bson.M{"phash": 1, "_id": 0})
+	fopts := options.FindOne().SetProjection(bson.M{"phash": 1, "_id": 0})
 	res := C("secret").FindOne(gtx, bson.M{"userID": userID}, fopts)
 
 	if err := res.Err(); err != nil {
@@ -207,25 +206,29 @@ func (m *userStorage) ValidateUser(
 
 //GetUserAuthLevel - gets user authorization level
 func (m *userStorage) GetUserAuthLevel(
-	userID string) (level teak.AuthLevel, err error) {
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C("users").
-		Find(bson.M{"userID": userID}).
-		Select(bson.M{"auth": 1}).
-		One(&level)
-	return level, teak.LogError("UMan:Mongo", err)
+	gtx context.Context,
+	userID string) (teak.AuthLevel, error) {
+
+	fopts := options.FindOne().SetProjection(bson.M{"auth": 1})
+	res := C("users").FindOne(gtx, bson.M{"userID": userID}, fopts)
+	if res.Err() != nil {
+		return teak.Public, teak.LogError("t.user.mongo", res.Err())
+	}
+
+	var level teak.AuthLevel
+	err := res.Decode(&level)
+	return level, teak.LogError("t.user.mongo", err)
 }
 
 //SetAuthLevel - sets the auth level for the user
 func (m *userStorage) SetAuthLevel(
-	userID string, authLevel teak.AuthLevel) (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
-	if err = m.validateForSuper(conn, authLevel); err != nil {
+	gtx context.Context,
+	userID string, authLevel teak.AuthLevel) error {
+	if err := m.validateForSuper(gtx, authLevel); err != nil {
 		return err
 	}
-	err = conn.C("users").Update(
+
+	_, err := C("users").UpdateOne(gtx,
 		bson.M{
 			"id": userID,
 		},
@@ -260,10 +263,9 @@ func (m *userStorage) validateForSuper(
 
 //SetUserState - sets state of an user account
 func (m *userStorage) SetUserState(
+	gtx context.Context,
 	userID string, state teak.UserState) (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C("users").Update(
+	_, err = C("users").UpdateOne(gtx,
 		bson.M{
 			"id": userID,
 		},
@@ -272,15 +274,14 @@ func (m *userStorage) SetUserState(
 				"state": state,
 			},
 		})
-	return teak.LogError("UMan:Mongo", err)
+	return teak.LogError("t.user.mongo", err)
 }
 
 //VerifyUser - sets state of an user account to verified based on userID
 //and verification ID
-func (m *userStorage) VerifyUser(userID, verID string) (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C("users").Update(
+func (m *userStorage) VerifyUser(
+	gtx context.Context, userID, verID string) error {
+	_, err := C("users").UpdateOne(gtx,
 		bson.M{
 			"$and": []bson.M{
 				{"id": userID},
@@ -298,34 +299,35 @@ func (m *userStorage) VerifyUser(userID, verID string) (err error) {
 }
 
 //CreateIndices - creates mongoDB indeces for tables used for user management
-func (m *userStorage) CreateIndices() (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
-	err = conn.C("users").EnsureIndex(mgo.Index{
-		Key:        []string{"id", "email"},
-		Unique:     true,
-		DropDups:   true,
-		Background: true, // See notes.
-		Sparse:     true,
-	})
-	return err
+func (m *userStorage) CreateIndices() error {
+
+	// TODO - implement
+
+	// conn := DefaultConn()
+	// defer conn.Close()
+	// err = conn.C("users").EnsureIndex(mgo.Index{
+	// 	Key:        []string{"id", "email"},
+	// 	Unique:     true,
+	// 	DropDups:   true,
+	// 	Background: true, // See notes.
+	// 	Sparse:     true,
+	// })
+	// return err
+	return nil
 }
 
 //CleanData - cleans user management related data from database
-func (m *userStorage) CleanData() (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
-	_, err = conn.C("users").RemoveAll(bson.M{})
+func (m *userStorage) CleanData(gtx context.Context) error {
+	_, err := C("users").DeleteMany(gtx, bson.M{})
 	return err
 }
 
 //UpdateProfile - updates user details - this should be used when user logged in
 //is updating own user account
-func (m *userStorage) UpdateProfile(user *teak.User) (err error) {
-	conn := DefaultConn()
-	defer conn.Close()
+func (m *userStorage) UpdateProfile(
+	gtx context.Context, user *teak.User) error {
 	user.FullName = user.FirstName + " " + user.LastName
-	err = conn.C("users").Update(
+	_, err := C("users").UpdateOne(gtx,
 		bson.M{
 			"id": user.ID,
 		}, bson.M{
