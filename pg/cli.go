@@ -36,11 +36,11 @@ func requirePostgres(ctx *cli.Context) (err error) {
 		opts.Password = ag.GetRequiredSecret("pg-pass")
 	} else {
 		teak.Info("t.pg", "Read postgresql options from app config")
-		opts.Host = ag.GetStringOr("pg-host", opts.Host)
-		opts.Port = ag.GetIntOr("pg-port", opts.Port)
-		opts.User = ag.GetStringOr("pg-user", opts.User)
-		opts.DBName = ag.GetStringOr("pg-db", opts.DBName)
-		opts.Password = ag.GetSecretOr("pg-pass", opts.Password)
+		// opts.Host = ag.GetStringOr("pg-host", opts.Host)
+		// opts.Port = ag.GetIntOr("pg-port", opts.Port)
+		// opts.User = ag.GetStringOr("pg-user", opts.User)
+		// opts.DBName = ag.GetStringOr("pg-db", opts.DBName)
+		// opts.Password = ag.GetSecretOr("pg-pass", opts.Password)
 	}
 	defDB, err = ConnectWithOpts(&opts)
 	if err != nil {
