@@ -176,7 +176,8 @@ func LogError(module string, err error) error {
 	return err
 }
 
-//LogErrorX - log error with a message
+// LogErrorX - checks if the provide err is not null, and logs it along with the
+// given message
 func LogErrorX(module, msg string, err error, args ...interface{}) error {
 
 	if err != nil && ErrorLevel >= lconf.FilterLevel {
