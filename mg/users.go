@@ -68,7 +68,7 @@ func (m *userStorage) GetUsers(
 	gtx context.Context,
 	offset, limit int64,
 	filter *teak.Filter) ([]*teak.User, error) {
-	selector := generateSelector(filter)
+	selector := GenerateSelector(filter)
 	users := make([]*teak.User, 0, limit)
 	fopts := options.Find().SetSkip(offset).SetLimit(limit)
 	cur, err := C("users").Find(gtx, selector, fopts)
@@ -83,7 +83,7 @@ func (m *userStorage) GetUsers(
 //GetCount - gives the number of user selected by given filter
 func (m *userStorage) GetCount(
 	gtx context.Context, filter *teak.Filter) (int64, error) {
-	selector := generateSelector(filter)
+	selector := GenerateSelector(filter)
 	count, err := C("users").CountDocuments(gtx, selector)
 	return count, teak.LogError("t.user.mongo", err)
 }
@@ -94,7 +94,7 @@ func (m *userStorage) GetUsersWithCount(
 	offset, limit int64,
 	filter *teak.Filter) (int64, []*teak.User, error) {
 	var selector bson.M
-	selector = generateSelector(filter)
+	selector = GenerateSelector(filter)
 	users := make([]*teak.User, 0, limit)
 
 	fopts := options.Find().
