@@ -89,10 +89,7 @@ func (mds *dataStorage) RetrieveOne(
 	res := C(dtype).FindOne(gtx, bson.M{
 		keyField: key,
 	})
-	var err error
-	if err = res.Err(); err == nil {
-		err = res.Decode(out)
-	}
+	err := Decode(res, out)
 	return logMongoError("t.mongo.store", err)
 }
 
