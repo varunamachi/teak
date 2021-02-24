@@ -525,7 +525,7 @@ func (uh *UserHandler) DataType() string {
 
 //UniqueKeyField - gives the field which uniquely identifies the user
 func (uh *UserHandler) UniqueKeyField() string {
-	return "ID"
+	return "id"
 }
 
 //GetKey - get the uniquely identifying key for the given item

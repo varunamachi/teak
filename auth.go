@@ -144,7 +144,8 @@ type UserStorage interface {
 	ValidateUser(gtx context.Context, userID, password string) (err error)
 
 	//GetUserAuthLevel - gets user authorization level
-	GetUserAuthLevel(gtx context.Context, userID string) (level AuthLevel, err error)
+	GetUserAuthLevel(gtx context.Context, userID string) (
+		level AuthLevel, err error)
 
 	//CreateSuperUser - creates the first super user for the application
 	// CreateSuperUser(user *User, password string) (err error)
