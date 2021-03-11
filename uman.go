@@ -213,7 +213,7 @@ func createUser(ctx echo.Context) (err error) {
 		Data:   nil,
 		Err:    ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 func registerUser(ctx echo.Context) (err error) {
@@ -260,7 +260,7 @@ func registerUser(ctx echo.Context) (err error) {
 		},
 		Err: ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 func updateUser(ctx echo.Context) (err error) {
@@ -285,7 +285,7 @@ func updateUser(ctx echo.Context) (err error) {
 		Data:   nil,
 		Err:    ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 func deleteUser(ctx echo.Context) (err error) {
@@ -325,7 +325,7 @@ func deleteUser(ctx echo.Context) (err error) {
 		},
 		Err: ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 func getUser(ctx echo.Context) (err error) {
@@ -350,7 +350,7 @@ func getUser(ctx echo.Context) (err error) {
 		Data:   user,
 		Err:    ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 func getUsers(ctx echo.Context) (err error) {
@@ -387,7 +387,7 @@ func getUsers(ctx echo.Context) (err error) {
 		},
 		Err: ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 func setPassword(ctx echo.Context) (err error) {
@@ -414,7 +414,7 @@ func setPassword(ctx echo.Context) (err error) {
 		Data:   nil,
 		Err:    ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 func resetPassword(ctx echo.Context) (err error) {
@@ -443,7 +443,7 @@ func resetPassword(ctx echo.Context) (err error) {
 		Data:   nil,
 		Err:    ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 func verify(ctx echo.Context) (err error) {
@@ -482,7 +482,7 @@ func verify(ctx echo.Context) (err error) {
 		},
 		Err: ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 func updateProfile(ctx echo.Context) (err error) {
@@ -512,7 +512,7 @@ func updateProfile(ctx echo.Context) (err error) {
 		Data:   nil,
 		Err:    ErrString(err),
 	})
-	return LogError("Sec:Hdl", err)
+	return LogError("t.uman", err)
 }
 
 //UserHandler - CRUD support for User data type
