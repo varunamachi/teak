@@ -525,16 +525,16 @@ func GetQueryParam(ctx echo.Context, name string, def string) (val string) {
 //not nil then that function is invoked at the end of command, otherwise
 //default serve is used
 func GetServiceStartCmd(serveFunc func(port int) error) *cli.Command {
-	return &cli.Command{
+	return GetStore().Wrap(&cli.Command{
 		Name:  "serve",
 		Usage: "Starts the HTTP service",
-		Flags: GetStore().WithFlags(
+		Flags: []cli.Flag{
 			cli.IntFlag{
 				Name:  "port",
 				Value: 8000,
 				Usage: "Port at which the service needs to serve",
 			},
-		),
+		},
 		Action: func(ctx *cli.Context) (err error) {
 			ag := NewArgGetter(ctx)
 			port := ag.GetRequiredInt("port")
@@ -545,5 +545,5 @@ func GetServiceStartCmd(serveFunc func(port int) error) *cli.Command {
 		},
 		// Subcommands: []cli.Command{},
 		Subcommands: nil,
-	}
+	})
 }

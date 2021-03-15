@@ -83,20 +83,21 @@ func ping(ctx echo.Context) (err error) {
 //getAdminCommands - gives commands related to HTTP networking
 func getAdminCommands() []*cli.Command {
 	return []*cli.Command{
-		initCmd(),
-		destroyCmd(),
-		setupCmd(),
-		resetCmd(),
-		isInitCmd(),
-		userCmd(),
+		GetStore().Wrap(initCmd()),
+		GetStore().Wrap(destroyCmd()),
+		GetStore().Wrap(setupCmd()),
+		GetStore().Wrap(resetCmd()),
+		GetStore().Wrap(isInitCmd()),
+		GetStore().Wrap(userCmd()),
 	}
 }
 
 func initCmd() *cli.Command {
 	return &cli.Command{
+
 		Name:  "init",
 		Usage: "Initialize application",
-		Flags: dataStorage.WithFlags(
+		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "super-id",
 				Usage: "Unique ID of the admin",
@@ -113,7 +114,7 @@ func initCmd() *cli.Command {
 				Name:  "last",
 				Usage: "Last name of the admin",
 			},
-		),
+		},
 		Action: func(ctx *cli.Context) (err error) {
 			ag := NewArgGetter(ctx)
 			id := ag.GetRequiredString("super-id")
@@ -156,7 +157,7 @@ func destroyCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "destroy",
 		Usage: "Destroy application, data source etc",
-		Flags: dataStorage.WithFlags(
+		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "super-id",
 				Usage: "Unique ID of the admin",
@@ -166,7 +167,7 @@ func destroyCmd() *cli.Command {
 				Usage:  "Force destroy a corrupted database",
 				Hidden: true,
 			},
-		),
+		},
 		Action: func(ctx *cli.Context) (err error) {
 			init, err := GetStore().IsInitialized(context.TODO())
 			if err != nil {
@@ -207,7 +208,7 @@ func isInitCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "is-init",
 		Usage: "Check if storage is initialized",
-		Flags: dataStorage.WithFlags(),
+		Flags: []cli.Flag{},
 		Action: func(ctx *cli.Context) (err error) {
 			yes, err := GetStore().IsInitialized(context.TODO())
 			if err != nil {
@@ -226,7 +227,7 @@ func setupCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "setup",
 		Usage: "Sets up the application",
-		Flags: dataStorage.WithFlags(
+		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "super-id",
 				Usage: "Super user ID",
@@ -235,7 +236,7 @@ func setupCmd() *cli.Command {
 				Name:  "super-pw",
 				Usage: "Super user password",
 			},
-		),
+		},
 		Action: func(ctx *cli.Context) (err error) {
 			vapp := GetAppReference(ctx)
 			var user *User
@@ -286,7 +287,7 @@ func resetCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "reset",
 		Usage: "Resets the application",
-		Flags: dataStorage.WithFlags(
+		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "super-id",
 				Usage: "Super user ID",
@@ -295,7 +296,7 @@ func resetCmd() *cli.Command {
 				Name:  "super-pw",
 				Usage: "Super user password",
 			},
-		),
+		},
 		Action: func(ctx *cli.Context) (err error) {
 			vapp := GetAppReference(ctx)
 			var user *User
@@ -323,8 +324,8 @@ func resetCmd() *cli.Command {
 					}
 					user, err = DoLogin(context.TODO(), superID, superPW)
 					if err != nil {
-						err = fmt.Errorf(
-							"Failed to authenticate super user: %v",
+						err = LogErrorX("t.app",
+							"Failed to authenticate super user: %w",
 							err)
 						return err
 					}
@@ -335,7 +336,7 @@ func resetCmd() *cli.Command {
 					err = vapp.Reset(context.TODO())
 				}
 			} else {
-				err = errors.New("V App not properly initialized")
+				err = errors.New("App not properly initialized")
 			}
 			return LogError("t.app", err)
 		},

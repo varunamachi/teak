@@ -433,69 +433,13 @@ func (pg *dataStorage) Destroy(gtx context.Context) (err error) {
 	return err
 }
 
-// //Wrap - wraps a command with flags required to connect to this data source
-// func (pg *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
-// 	var curUserName string
-// 	user, err := user.Current()
-// 	if err == nil {
-// 		curUserName = user.Username
-// 	}
-// 	pgFlags := []cli.Flag{
-// 		cli.StringFlag{
-// 			Name:   "pg-host",
-// 			Value:  "localhost",
-// 			Usage:  "Address of the host running postgres",
-// 			EnvVar: "PG_HOST",
-// 		},
-// 		cli.IntFlag{
-// 			Name:   "pg-port",
-// 			Value:  5432,
-// 			Usage:  "Port on which postgres is listening",
-// 			EnvVar: "PG_PORT",
-// 		},
-// 		cli.StringFlag{
-// 			Name:   "pg-db",
-// 			Value:  "",
-// 			Usage:  "Database name",
-// 			EnvVar: "PG_DB",
-// 		},
-// 		cli.StringFlag{
-// 			Name:   "pg-user",
-// 			Value:  curUserName,
-// 			Usage:  "Postgres user name",
-// 			EnvVar: "PG_USER",
-// 		},
-// 		cli.StringFlag{
-// 			Name:   "pg-pass",
-// 			Value:  "",
-// 			Usage:  "Postgres password for connection",
-// 			EnvVar: "PG_PASS",
-// 		},
-// 	}
-
-// 	cmd.Flags = append(cmd.Flags, pgFlags...)
-// 	if cmd.Before == nil {
-// 		cmd.Before = requirePostgres
-// 	} else {
-// 		otherBefore := cmd.Before
-// 		cmd.Before = func(ctx *cli.Context) (err error) {
-// 			err = requirePostgres(ctx)
-// 			if err == nil {
-// 				err = otherBefore(ctx)
-// 			}
-// 			return err
-// 		}
-// 	}
-// 	return cmd
-// }
 //Wrap - wraps a command with flags required to connect to this data source
-func (pg *dataStorage) WithFlags(flags ...cli.Flag) []cli.Flag {
+func (pg *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
 	var curUserName string
-	user, err := user.Current()
-	if err == nil {
+	if user, err := user.Current(); err == nil {
 		curUserName = user.Username
 	}
-	return append(flags,
+	pgFlags := []cli.Flag{
 		cli.StringFlag{
 			Name:   "pg-host",
 			Value:  "localhost",
@@ -526,8 +470,64 @@ func (pg *dataStorage) WithFlags(flags ...cli.Flag) []cli.Flag {
 			Usage:  "Postgres password for connection",
 			EnvVar: "PG_PASS",
 		},
-	)
+	}
+
+	cmd.Flags = append(cmd.Flags, pgFlags...)
+	if cmd.Before == nil {
+		cmd.Before = requirePostgres
+	} else {
+		otherBefore := cmd.Before
+		cmd.Before = func(ctx *cli.Context) (err error) {
+			err = requirePostgres(ctx)
+			if err == nil {
+				err = otherBefore(ctx)
+			}
+			return err
+		}
+	}
+	return cmd
 }
+
+//Wrap - wraps a command with flags required to connect to this data source
+// func (pg *dataStorage) WithFlags(flags ...cli.Flag) []cli.Flag {
+// 	var curUserName string
+// 	user, err := user.Current()
+// 	if err == nil {
+// 		curUserName = user.Username
+// 	}
+// 	return append(flags,
+// 		cli.StringFlag{
+// 			Name:   "pg-host",
+// 			Value:  "localhost",
+// 			Usage:  "Address of the host running postgres",
+// 			EnvVar: "PG_HOST",
+// 		},
+// 		cli.IntFlag{
+// 			Name:   "pg-port",
+// 			Value:  5432,
+// 			Usage:  "Port on which postgres is listening",
+// 			EnvVar: "PG_PORT",
+// 		},
+// 		cli.StringFlag{
+// 			Name:   "pg-db",
+// 			Value:  "",
+// 			Usage:  "Database name",
+// 			EnvVar: "PG_DB",
+// 		},
+// 		cli.StringFlag{
+// 			Name:   "pg-user",
+// 			Value:  curUserName,
+// 			Usage:  "Postgres user name",
+// 			EnvVar: "PG_USER",
+// 		},
+// 		cli.StringFlag{
+// 			Name:   "pg-pass",
+// 			Value:  "",
+// 			Usage:  "Postgres password for connection",
+// 			EnvVar: "PG_PASS",
+// 		},
+// 	)
+// }
 
 //GetManageCommands - commands that can be used to manage this data storage
 func (pg *dataStorage) GetManageCommands() (commands []cli.Command) {
@@ -537,7 +537,7 @@ func (pg *dataStorage) GetManageCommands() (commands []cli.Command) {
 //IsInitialized - tells if data source is initialized
 func (pg *dataStorage) IsInitialized(
 	gtx context.Context) (yes bool, err error) {
-	yes, err = pg.hasTable(gtx, "teak_internal")
+	yes, err = pg.HasTable(gtx, "teak_internal")
 	if err != nil {
 		err = teak.LogErrorX("t.pg.store",
 			"Failed check if store is initialized", err)
@@ -573,7 +573,7 @@ func (pg *dataStorage) InitializedAt(
 	return t, err
 }
 
-func (pg *dataStorage) hasTable(
+func (pg *dataStorage) HasTable(
 	gtx context.Context, tableName string) (yes bool, err error) {
 	err = defDB.GetContext(gtx, &yes,
 		`SELECT EXISTS (

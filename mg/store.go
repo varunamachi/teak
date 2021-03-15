@@ -389,27 +389,31 @@ func (mds *dataStorage) Destroy(gtx context.Context) (err error) {
 	return err
 }
 
-// //Wrap - wraps a command with flags required to connect to this data source
-// func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
-// 	cmd.Flags = append(cmd.Flags, mongoFlags...)
-// 	if cmd.Before == nil {
-// 		cmd.Before = requireMongo
-// 	} else {
-// 		otherBefore := cmd.Before
-// 		cmd.Before = func(ctx *cli.Context) (err error) {
-// 			err = requireMongo(ctx)
-// 			if err == nil {
-// 				err = otherBefore(ctx)
-// 			}
-// 			return err
-// 		}
-// 	}
-// 	return cmd
-// }
+//Wrap - wraps a command with flags required to connect to this data source
+func (mds *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
+	req := func(ctx *cli.Context) error {
+		return requireMongo(context.TODO(), ctx)
+	}
 
-func (mds *dataStorage) WithFlags(flags ...cli.Flag) []cli.Flag {
-	return append(flags, mongoFlags...)
+	cmd.Flags = append(cmd.Flags, mongoFlags...)
+	if cmd.Before == nil {
+		cmd.Before = req
+	} else {
+		otherBefore := cmd.Before
+		cmd.Before = func(ctx *cli.Context) (err error) {
+			err = req(ctx)
+			if err == nil {
+				err = otherBefore(ctx)
+			}
+			return err
+		}
+	}
+	return cmd
 }
+
+// func (mds *dataStorage) WithFlags(flags ...cli.Flag) []cli.Flag {
+// 	return append(flags, mongoFlags...)
+// }
 
 //GetManageCommands - commands that can be used to manage this data storage
 func (mds *dataStorage) GetManageCommands() (commands []cli.Command) {

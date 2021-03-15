@@ -237,7 +237,9 @@ type DataStorage interface {
 	Setup(gtx context.Context, params M) error
 	Reset(gtx context.Context) error
 	Destroy(gtx context.Context) error
-	WithFlags(flags ...cli.Flag) []cli.Flag
+	// WithFlags(flags ...cli.Flag) []cli.Flag
+	// ConnectDefault(ag *ArgGetter) error
+	Wrap(cmd *cli.Command) *cli.Command
 	GetManageCommands() []cli.Command
 }
 

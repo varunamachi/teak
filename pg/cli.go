@@ -28,7 +28,8 @@ func requirePostgres(ctx *cli.Context) (err error) {
 
 	ag := teak.NewArgGetter(ctx)
 	var opts ConnOpts
-	if !teak.GetConfig("postgres.opts", &opts) {
+
+	if !teak.GetConfig("postgresOpts", &opts) {
 		opts.Host = ag.GetRequiredString("pg-host")
 		opts.Port = ag.GetRequiredInt("pg-port")
 		opts.User = ag.GetRequiredString("pg-user")
@@ -36,11 +37,14 @@ func requirePostgres(ctx *cli.Context) (err error) {
 		opts.Password = ag.GetRequiredSecret("pg-pass")
 	} else {
 		teak.Info("t.pg", "Read postgresql options from app config")
-		// opts.Host = ag.GetStringOr("pg-host", opts.Host)
-		// opts.Port = ag.GetIntOr("pg-port", opts.Port)
-		// opts.User = ag.GetStringOr("pg-user", opts.User)
-		// opts.DBName = ag.GetStringOr("pg-db", opts.DBName)
-		// opts.Password = ag.GetSecretOr("pg-pass", opts.Password)
+
+		// If an option is provided in commandline, it overrides the config
+		// parameter
+		opts.Host = ag.GetStringOr("pg-host", opts.Host)
+		opts.Port = ag.GetIntOr("pg-port", opts.Port)
+		opts.User = ag.GetStringOr("pg-user", opts.User)
+		opts.DBName = ag.GetStringOr("pg-db", opts.DBName)
+		opts.Password = ag.GetSecretOr("pg-pass", opts.Password)
 	}
 	defDB, err = ConnectWithOpts(&opts)
 	if err != nil {

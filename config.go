@@ -15,14 +15,17 @@ var config = make(map[string]interface{})
 func readConfig(dirPath, appName string) (err error) {
 	path := dirPath + "/" + appName + ".conf.json"
 	if ExistsAsFile(path) {
-		var raw []byte
-		raw, err = ioutil.ReadFile(path)
+		raw, err := ioutil.ReadFile(path)
 		if err == nil {
 			err = json.Unmarshal(raw, &config)
 		}
 		if err == nil {
 			Info("t.config", "Loaded config from %s", path)
+		} else {
+			Trace("t.config", err.Error())
 		}
+	} else {
+		Trace("t.config", "Couldn't find config file at %s", path)
 	}
 	return err
 }
@@ -47,6 +50,7 @@ func LoadConfig(appName string) {
 
 //PrintConfig - prints the configuration
 func PrintConfig() {
+	fmt.Println("Config: ")
 	for k, v := range config {
 		fmt.Printf("%s: %v\n", k, v)
 	}

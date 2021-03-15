@@ -98,7 +98,7 @@ func NewApp(
 	InitLogger(LoggerConfig{
 		Logger:      NewDirectLogger(),
 		LogConsole:  true,
-		FilterLevel: TraceLevel,
+		FilterLevel: InfoLevel,
 	})
 
 	LoadConfig(name)
@@ -116,6 +116,33 @@ func NewApp(
 			Usage:     desc,
 			ErrWriter: ioutil.Discard,
 			Metadata:  map[string]interface{}{},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "log-level",
+					Value: "info",
+					Usage: "Give log level, one of: 'trace', 'debug', " +
+						"'info', 'warn', 'error'",
+				},
+			},
+			Before: func(ctx *cli.Context) error {
+				ag := NewArgGetter(ctx)
+				logLevel := ag.GetOptionalString("log-level")
+				if logLevel != "" {
+					switch logLevel {
+					case "trace":
+						SetLevel(TraceLevel)
+					case "debug":
+						SetLevel(DebugLevel)
+					case "info":
+						SetLevel(InfoLevel)
+					case "warn":
+						SetLevel(WarnLevel)
+					case "error":
+						SetLevel(ErrorLevel)
+					}
+				}
+				return nil
+			},
 		},
 		apiRoot:    "",
 		apiVersion: apiVersion,
