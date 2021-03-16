@@ -488,47 +488,6 @@ func (pg *dataStorage) Wrap(cmd *cli.Command) *cli.Command {
 	return cmd
 }
 
-//Wrap - wraps a command with flags required to connect to this data source
-// func (pg *dataStorage) WithFlags(flags ...cli.Flag) []cli.Flag {
-// 	var curUserName string
-// 	user, err := user.Current()
-// 	if err == nil {
-// 		curUserName = user.Username
-// 	}
-// 	return append(flags,
-// 		cli.StringFlag{
-// 			Name:   "pg-host",
-// 			Value:  "localhost",
-// 			Usage:  "Address of the host running postgres",
-// 			EnvVar: "PG_HOST",
-// 		},
-// 		cli.IntFlag{
-// 			Name:   "pg-port",
-// 			Value:  5432,
-// 			Usage:  "Port on which postgres is listening",
-// 			EnvVar: "PG_PORT",
-// 		},
-// 		cli.StringFlag{
-// 			Name:   "pg-db",
-// 			Value:  "",
-// 			Usage:  "Database name",
-// 			EnvVar: "PG_DB",
-// 		},
-// 		cli.StringFlag{
-// 			Name:   "pg-user",
-// 			Value:  curUserName,
-// 			Usage:  "Postgres user name",
-// 			EnvVar: "PG_USER",
-// 		},
-// 		cli.StringFlag{
-// 			Name:   "pg-pass",
-// 			Value:  "",
-// 			Usage:  "Postgres password for connection",
-// 			EnvVar: "PG_PASS",
-// 		},
-// 	)
-// }
-
 //GetManageCommands - commands that can be used to manage this data storage
 func (pg *dataStorage) GetManageCommands() (commands []cli.Command) {
 	return commands
