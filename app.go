@@ -177,6 +177,27 @@ func NewApp(
 	return app
 }
 
+// Init - initialize the application for the first time
+func (app *App) Init(
+	gtx context.Context, admin *User, adminPass string, param M) (err error) {
+	err = GetStore().Init(context.TODO(), admin, adminPass, M{})
+	if err != nil {
+		return err
+	}
+	for _, module := range app.modules {
+		if module.Initialize != nil {
+			err = module.Initialize(gtx, app)
+			if err != nil {
+				Error("t.app.init", "Failed to initialize %s",
+					module.Name)
+				break
+			}
+			Info("t.app.init", "Initialized module %s", module.Name)
+		}
+	}
+	return err
+}
+
 //Setup - sets up the application and the registered module. This is not
 //initialization and needs to be called when app/module configuration changes.
 //This is the place where mongoDB indices are expected to be created.

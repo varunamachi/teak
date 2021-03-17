@@ -88,3 +88,5 @@ func CollectionWithDB(db, coll string) *mongo.Collection {
 func SetDefaultDB(defDB string) {
 	defaultDB = defDB
 }
+
+func GetDefaultDB()

@@ -144,7 +144,7 @@ func initCmd() *cli.Command {
 			}
 			// UpdateUserInfo(&user)
 			user.State = Active
-			err = GetStore().Init(context.TODO(), &user, one, M{})
+			err = GetAppReference(ctx).Init(context.TODO(), &user, one, M{})
 			if err == nil {
 				Info("t.app", "App setup successful")
 			}
@@ -264,7 +264,7 @@ func setupCmd() *cli.Command {
 					}
 					user, err = DoLogin(context.TODO(), superID, superPW)
 					if err != nil {
-						err = fmt.Errorf(
+						err = LogErrorX("ft.setup",
 							"Failed to authenticate super user: %v",
 							err)
 						return err
@@ -429,12 +429,14 @@ func setRoleCmd() *cli.Command {
 		Usage: "Sets auth-level/role to a user",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "admin-id",
-				Usage: "Super user ID",
+				Name:   "admin-id",
+				Usage:  "Super user ID",
+				EnvVar: "TK_ADMIN_USER",
 			},
 			cli.StringFlag{
-				Name:  "admin-pw",
-				Usage: "Super user password",
+				Name:   "admin-pw",
+				Usage:  "Super user password",
+				EnvVar: "TK_ADMIN_PASSWORD",
 			},
 			cli.StringFlag{
 				Name:  "id",
