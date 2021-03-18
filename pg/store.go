@@ -284,28 +284,28 @@ func (pg *dataStorage) GetFilterValuesX(
 	return values, err
 }
 
-//Init - initialize the data storage for the first time, sets it upda and also
-//creates the first admin user. Data store can be initialized only once
-func (pg *dataStorage) Init(
+//Setup - initialize the data storage for the first time, sets it upda and also
+//creates the first admin user. Data store can be setup only once
+func (pg *dataStorage) Setup(
 	gtx context.Context,
 	admin *teak.User,
 	adminPass string,
 	param teak.M) (err error) {
-	val, err := pg.IsInitialized(gtx)
+	val, err := pg.IsSetup(gtx)
 	if err != nil {
 		err = teak.LogErrorX("t.pg.store",
-			"Failed to check initialization status of PG store", err)
+			"Failed to check setup status of PG store", err)
 		return err
 	}
 	if val {
-		teak.Info("t.pg.store", "Store already initialized.")
+		teak.Info("t.pg.store", "Store already setup.")
 		teak.Info("t.pg.store",
-			"If you want to update the structure of the store, use Setup")
+			"If you want to update the structure of the store, use Init")
 		return err
 	}
-	err = pg.Setup(gtx, teak.M{})
+	err = pg.Init(gtx, param)
 	if err != nil {
-		err = teak.LogErrorX("t.pg.store", "Failed to setup app", err)
+		err = teak.LogErrorX("t.pg.store", "Failed to init app", err)
 		return err
 	}
 	uStore := NewUserStorage()
@@ -389,11 +389,14 @@ var tables = []struct {
 	},
 }
 
-//Setup - setup has to be run when data storage structure changes, such as
+//Init - has to be run when data storage structure changes, such as
 //adding index, altering tables etc
-func (pg *dataStorage) Setup(gtx context.Context, params teak.M) (err error) {
+func (pg *dataStorage) Init(gtx context.Context, params teak.M) (err error) {
 	// for name, query := range tables {
 	for _, tab := range tables {
+		if has, _ := pg.HasTable(gtx, tab.name); has {
+			continue
+		}
 		_, err = defDB.ExecContext(gtx, tab.query)
 		if err != nil {
 			err = teak.LogErrorX("t.pg.store", "Failed to create table '%s'",
@@ -493,26 +496,26 @@ func (pg *dataStorage) GetManageCommands() (commands []cli.Command) {
 	return commands
 }
 
-//IsInitialized - tells if data source is initialized
-func (pg *dataStorage) IsInitialized(
+//IsSetup - tells if data source is initialized
+func (pg *dataStorage) IsSetup(
 	gtx context.Context) (yes bool, err error) {
 	yes, err = pg.HasTable(gtx, "teak_internal")
 	if err != nil {
 		err = teak.LogErrorX("t.pg.store",
-			"Failed check if store is initialized", err)
+			"Failed check if store is setup", err)
 		return yes, err
 	}
 	err = defDB.GetContext(gtx, &yes,
 		`SELECT val->'value' FROM teak_internal WHERE name = 'initialized'`)
 	if err != nil {
 		teak.Debug("t.pg.store",
-			"Failed to check initialization status of storage: %v", err)
+			"Failed to check setup status of storage: %v", err)
 		yes, err = false, nil
 	}
 	return yes, err
 }
 
-func (pg *dataStorage) InitializedAt(
+func (pg *dataStorage) SetupAt(
 	gtx context.Context) (t time.Time, err error) {
 	str := ""
 	err = defDB.GetContext(gtx, &str,

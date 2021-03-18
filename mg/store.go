@@ -331,28 +331,28 @@ func GenerateSelector(
 	return selector
 }
 
-//Init - initialize the data storage for the first time, sets it upda and also
-//creates the first admin user. Data store can be initialized only once
-func (mds *dataStorage) Init(
+//Setup - initialize the data storage for the first time, sets it upda and also
+//creates the first admin user. Data store can be setup only once
+func (mds *dataStorage) Setup(
 	gtx context.Context,
 	admin *teak.User,
 	adminPass string,
 	param teak.M) error {
-	val, err := mds.IsInitialized(gtx)
+	val, err := mds.IsSetup(gtx)
 	if err != nil {
 		err = teak.LogErrorX("t.mongo.store",
-			"Failed to check initialization status of PG store", err)
+			"Failed to check setup status of PG store", err)
 		return err
 	}
 	if val {
-		teak.Info("t.mongo.store", "Store already initialized.")
+		teak.Info("t.mongo.store", "Store already setup.")
 		teak.Info("t.mongo.store",
-			"If you want to update the structure of the store, use Setup")
+			"If you want to update the structure of the store, use Init")
 		return err
 	}
-	err = mds.Setup(gtx, teak.M{})
+	err = mds.Init(gtx, teak.M{})
 	if err != nil {
-		err = teak.LogErrorX("t.mongo.store", "Failed to setup app", err)
+		err = teak.LogErrorX("t.mongo.store", "Failed to init app", err)
 		return err
 	}
 	uStore := NewUserStorage()
@@ -373,7 +373,7 @@ func (mds *dataStorage) Init(
 
 //Setup - setup has to be run when data storage structure changes, such as
 //adding index, altering tables etc
-func (mds *dataStorage) Setup(gtx context.Context, params teak.M) (err error) {
+func (mds *dataStorage) Init(gtx context.Context, params teak.M) (err error) {
 	//Setup indices for user collection
 	//Setup indices for event collection
 	return err
@@ -420,8 +420,8 @@ func (mds *dataStorage) GetManageCommands() (commands []cli.Command) {
 	return commands
 }
 
-//IsInitialized - tells if data source is initialized
-func (mds *dataStorage) IsInitialized(gtx context.Context) (bool, error) {
+//IsSetup - tells if data source is setup
+func (mds *dataStorage) IsSetup(gtx context.Context) (bool, error) {
 	return true, nil
 }
 

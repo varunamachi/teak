@@ -48,7 +48,7 @@ func getEvents(ctx echo.Context) (err error) {
 		}
 	} else {
 		if err == nil {
-			err = errors.New("Could not get Offset and Limit arguments")
+			err = Error("t.app", "Could not get Offset and Limit arguments")
 		}
 		msg = "Could not find required parameter"
 		status = http.StatusBadRequest
@@ -83,20 +83,20 @@ func ping(ctx echo.Context) (err error) {
 //getAdminCommands - gives commands related to HTTP networking
 func getAdminCommands() []*cli.Command {
 	return []*cli.Command{
-		GetStore().Wrap(initCmd()),
+		GetStore().Wrap(setupCommand()),
 		GetStore().Wrap(destroyCmd()),
-		GetStore().Wrap(setupCmd()),
+		GetStore().Wrap(initCmd()),
 		GetStore().Wrap(resetCmd()),
-		GetStore().Wrap(isInitCmd()),
+		GetStore().Wrap(isSetup()),
 		GetStore().Wrap(userCmd()),
 	}
 }
 
-func initCmd() *cli.Command {
+func setupCommand() *cli.Command {
 	return &cli.Command{
 
-		Name:  "init",
-		Usage: "Initialize application",
+		Name:  "setup",
+		Usage: "Setup application",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "super-id",
@@ -169,7 +169,7 @@ func destroyCmd() *cli.Command {
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
-			init, err := GetStore().IsInitialized(context.TODO())
+			init, err := GetStore().IsSetup(context.TODO())
 			if err != nil {
 				return err
 			}
@@ -178,7 +178,7 @@ func destroyCmd() *cli.Command {
 				ag := NewArgGetter(ctx)
 				superID := ag.GetRequiredString("super-id")
 				if err = ag.Err; err != nil {
-					err = Error("t.store",
+					err = Error("t.app",
 						"Initial super user password does not match")
 					return err
 				}
@@ -186,12 +186,12 @@ func destroyCmd() *cli.Command {
 				var user *User
 				user, err = DoLogin(context.TODO(), superID, superPW)
 				if err != nil {
-					err = fmt.Errorf("Failed to authenticate super user: %v",
-						err)
+					err = LogErrorX("t.app",
+						"Failed to authenticate super user", err)
 					return err
 				}
 				if user.Auth != Super {
-					err = errors.New("Only super user can destroy the app")
+					err = Error("t.app", "Only super user can destroy the app")
 					return err
 				}
 			}
@@ -204,37 +204,39 @@ func destroyCmd() *cli.Command {
 	}
 }
 
-func isInitCmd() *cli.Command {
+func isSetup() *cli.Command {
 	return &cli.Command{
-		Name:  "is-init",
-		Usage: "Check if storage is initialized",
+		Name:  "is-setup",
+		Usage: "Check if storage is setup",
 		Flags: []cli.Flag{},
 		Action: func(ctx *cli.Context) (err error) {
-			yes, err := GetStore().IsInitialized(context.TODO())
+			yes, err := GetStore().IsSetup(context.TODO())
 			if err != nil {
 				Error("t.app", "Failed to check app init state")
 			} else if yes {
-				Info("t.app", "App is initialized")
+				Info("t.app", "App is setup")
 			} else {
-				Info("t.app", "App not initialized")
+				Info("t.app", "App not setup")
 			}
 			return err
 		},
 	}
 }
 
-func setupCmd() *cli.Command {
+func initCmd() *cli.Command {
 	return &cli.Command{
-		Name:  "setup",
-		Usage: "Sets up the application",
+		Name:  "init",
+		Usage: "Initializes the application",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "super-id",
-				Usage: "Super user ID",
+				Name:   "super-id",
+				Usage:  "Super user ID",
+				EnvVar: "TEAK_SUPER_USER",
 			},
 			cli.StringFlag{
-				Name:  "super-pw",
-				Usage: "Super user password",
+				Name:   "super-pw",
+				Usage:  "Super user password",
+				EnvVar: "TEAK_SUPER_PASSWORD",
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
@@ -264,7 +266,7 @@ func setupCmd() *cli.Command {
 					}
 					user, err = DoLogin(context.TODO(), superID, superPW)
 					if err != nil {
-						err = LogErrorX("ft.setup",
+						err = LogErrorX("t.setup",
 							"Failed to authenticate super user: %v",
 							err)
 						return err
@@ -276,7 +278,7 @@ func setupCmd() *cli.Command {
 					err = vapp.Setup(context.TODO())
 				}
 			} else {
-				err = errors.New("V App not properly initialized")
+				err = Error("t.app", "App not properly initialized")
 			}
 			return LogError("t.app", err)
 		},
@@ -289,12 +291,14 @@ func resetCmd() *cli.Command {
 		Usage: "Resets the application",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "super-id",
-				Usage: "Super user ID",
+				Name:   "super-id",
+				Usage:  "Super user ID",
+				EnvVar: "TEAK_SUPER_USER",
 			},
 			cli.StringFlag{
-				Name:  "super-pw",
-				Usage: "Super user password",
+				Name:   "super-pw",
+				Usage:  "Super user password",
+				EnvVar: "TEAK_SUPER_PASSWORD",
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
@@ -429,14 +433,14 @@ func setRoleCmd() *cli.Command {
 		Usage: "Sets auth-level/role to a user",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:   "admin-id",
+				Name:   "super-id",
 				Usage:  "Super user ID",
-				EnvVar: "TK_ADMIN_USER",
+				EnvVar: "TEAK_SUPER_USER",
 			},
 			cli.StringFlag{
-				Name:   "admin-pw",
+				Name:   "super-pw",
 				Usage:  "Super user password",
-				EnvVar: "TK_ADMIN_PASSWORD",
+				EnvVar: "TEAK_USER_PASSWORD",
 			},
 			cli.StringFlag{
 				Name:  "id",
@@ -510,12 +514,14 @@ func overridePasswordCmd() *cli.Command {
 				Usage: "New password",
 			},
 			cli.StringFlag{
-				Name:  "super-id",
-				Usage: "Super user ID",
+				Name:   "super-id",
+				Usage:  "Super user ID",
+				EnvVar: "TEAK_SUPER_USER",
 			},
 			cli.StringFlag{
-				Name:  "super-pw",
-				Usage: "Super user password",
+				Name:   "super-pw",
+				Usage:  "Super user password",
+				EnvVar: "TEAK_USER_PASSWORD",
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {
@@ -551,8 +557,8 @@ func overridePasswordCmd() *cli.Command {
 				}
 				user, err = DoLogin(context.TODO(), superID, superPW)
 				if err != nil {
-					err = fmt.Errorf("Failed to authenticate super user: %v",
-						err)
+					err = LogErrorX("t.app",
+						"Failed to authenticate super user", err)
 					return err
 				}
 				if user.Auth != Super {
@@ -575,12 +581,14 @@ func testLoginCmd() *cli.Command {
 		Usage: "Test login",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "id",
-				Usage: "user ID",
+				Name:   "id",
+				Usage:  "user ID",
+				EnvVar: "TEAK_USER",
 			},
 			cli.StringFlag{
-				Name:  "password",
-				Usage: "User password",
+				Name:   "password",
+				Usage:  "User password",
+				EnvVar: "TEAK_PASSWORD",
 			},
 		},
 		Action: func(ctx *cli.Context) (err error) {

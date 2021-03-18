@@ -46,16 +46,17 @@ func requirePostgres(ctx *cli.Context) (err error) {
 		opts.DBName = ag.GetStringOr("pg-db", opts.DBName)
 		opts.Password = ag.GetSecretOr("pg-pass", opts.Password)
 	}
-	defDB, err = ConnectWithOpts(&opts)
+	db, err := ConnectWithOpts(&opts)
 	if err != nil {
 		err = teak.LogErrorX("t.pg", "Failed to open postgres connection", err)
 		return err
 	}
-	err = defDB.Ping()
+	err = db.Ping()
 	if err != nil {
 		err = teak.LogErrorX("t.pg", "Failed to ping postgres DB", err)
 		return err
 	}
+	SetDefaultConn(db)
 	teak.Info("t.pg", "Connected to postgres server at %s:%d - to DB: %s",
 		opts.Host, opts.Port, opts.DBName)
 	return err

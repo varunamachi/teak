@@ -232,15 +232,12 @@ type DataStorage interface {
 		specs FilterSpecList,
 		filter *Filter) (values M, err error)
 
-	IsInitialized(gtx context.Context) (yes bool, err error)
-	Init(gtx context.Context, admin *User, adminPass string, param M) error
-	Setup(gtx context.Context, params M) error
+	IsSetup(gtx context.Context) (yes bool, err error)
+	Setup(gtx context.Context, admin *User, adminPass string, param M) error
+	Init(gtx context.Context, params M) error
 	Reset(gtx context.Context) error
 	Destroy(gtx context.Context) error
-	// WithFlags(flags ...cli.Flag) []cli.Flag
-	// ConnectDefault(ag *ArgGetter) error
 	Wrap(cmd *cli.Command) *cli.Command
-	GetManageCommands() []cli.Command
 }
 
 //@TODO Data store ini shall do these

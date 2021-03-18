@@ -49,19 +49,42 @@ func (app *App) AddModule(module *Module) {
 	app.modules = append(app.modules, module)
 }
 
-//Exec - runs the applications
-func (app *App) Exec(gtx context.Context, args []string) (err error) {
-	for _, module := range app.modules {
+func addInitializer(
+	gtx context.Context,
+	cmd *cli.Command,
+	module *Module,
+	app *App) {
+	req := func(ctx *cli.Context) error {
 		if module.Initialize != nil {
-			err = module.Initialize(gtx, app)
+			err := module.Initialize(gtx, app)
 			if err != nil {
 				Error("App", "Failed to initialize module %s",
 					module.Name)
-				break
 			}
 		}
+		return nil
+	}
+	if cmd.Before == nil {
+		cmd.Before = req
+	} else {
+		otherBefore := cmd.Before
+		cmd.Before = func(ctx *cli.Context) (err error) {
+			err = otherBefore(ctx)
+			if err == nil {
+				err = req(ctx)
+			}
+			return err
+		}
+	}
+}
+
+//Exec - runs the applications
+func (app *App) Exec(gtx context.Context, args []string) (err error) {
+
+	for _, module := range app.modules {
 		if module.Commands != nil {
 			for _, cmd := range module.Commands {
+				addInitializer(gtx, cmd, module, app)
 				app.Commands = append(app.Commands, *cmd)
 			}
 		}
@@ -163,12 +186,12 @@ func NewApp(
 		ItemHandlers: []StoredItemHandler{
 			&UserHandler{},
 		},
-		Initialize: func(gtx context.Context, app *App) error {
+		Setup: func(gtx context.Context, app *App) error {
 			// return dataStorage.Init()
 			return nil
 		},
-		Setup: func(gtx context.Context, app *App) error {
-			return dataStorage.Setup(gtx, nil)
+		Initialize: func(gtx context.Context, app *App) error {
+			return dataStorage.Init(gtx, nil)
 		},
 		Reset: func(gtx context.Context, app *App) error {
 			return dataStorage.Reset(gtx)
@@ -177,10 +200,13 @@ func NewApp(
 	return app
 }
 
-// Init - initialize the application for the first time
+// Init - initializes the application and the registered module. This needs to
+// be called when app/module configuration changes.
+// For example: This is the place where mongoDB indices are expected to
+// be created.
 func (app *App) Init(
 	gtx context.Context, admin *User, adminPass string, param M) (err error) {
-	err = GetStore().Init(context.TODO(), admin, adminPass, M{})
+	err = GetStore().Setup(context.TODO(), admin, adminPass, M{})
 	if err != nil {
 		return err
 	}
@@ -198,9 +224,7 @@ func (app *App) Init(
 	return err
 }
 
-//Setup - sets up the application and the registered module. This is not
-//initialization and needs to be called when app/module configuration changes.
-//This is the place where mongoDB indices are expected to be created.
+// Setup - Setup the application for the first time
 func (app *App) Setup(gtx context.Context) (err error) {
 	defer func() {
 		if err != nil {
@@ -217,7 +241,7 @@ func (app *App) Setup(gtx context.Context) (err error) {
 					module.Name)
 				break
 			}
-			Info("t.app.setup", "Configured module %s", module.Name)
+			Info("t.app.setup", "Setup module %s", module.Name)
 		}
 	}
 	if err == nil {
