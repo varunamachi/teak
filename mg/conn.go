@@ -29,7 +29,7 @@ type ConnOpts struct {
 }
 
 func (co *ConnOpts) String() string {
-	var buf bytes.Buffer
+	buf := bytes.NewBufferString("")
 	buf.WriteString("mongodb://")
 	for i, url := range co.URLs {
 		buf.WriteString(url)
@@ -40,7 +40,7 @@ func (co *ConnOpts) String() string {
 	if co.Type == ReplicaSet {
 		buf.WriteString("/?replicaSet=replset")
 	}
-	return co.String()
+	return buf.String()
 }
 
 //store - holds mongodb connection handle and information
@@ -88,5 +88,3 @@ func CollectionWithDB(db, coll string) *mongo.Collection {
 func SetDefaultDB(defDB string) {
 	defaultDB = defDB
 }
-
-func GetDefaultDB()

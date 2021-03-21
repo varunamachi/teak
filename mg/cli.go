@@ -63,9 +63,9 @@ func requireMongo(gtx context.Context, ctx *cli.Context) (err error) {
 	err = Connect(gtx, &opts)
 	if err != nil {
 		err = teak.LogErrorX("t.pg",
-			"Failed to open MongoDB connection to '%s'", err, opts)
+			"Failed to open MongoDB connection to '%s'", err, opts.String())
 		return err
 	}
-	teak.Info("t.mongo", "Connected to mongoDB server at %s", opts)
+	teak.Info("t.mongo", "Connected to mongoDB server at %s", opts.String())
 	return err
 }
