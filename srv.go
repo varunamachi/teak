@@ -138,7 +138,7 @@ func DoLogin(
 	params["password"] = password
 	user, err := authenticator(gtx, params)
 	if err == nil && authorizer != nil {
-		user.Auth, err = authorizer(gtx, user.ID)
+		user.Auth, err = authorizer(gtx, user.UserID)
 	}
 	return user, err
 }

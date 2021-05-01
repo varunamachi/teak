@@ -135,7 +135,7 @@ func DefaultAuthenticator(gtx context.Context, params map[string]interface{}) (
 func getVerificationLink(user *User) (link string) {
 	name := user.FirstName + " " + user.LastName
 	if name == "" {
-		name = user.ID
+		name = user.UserID
 	}
 	//@MAYBE use a template
 	var host string
@@ -144,7 +144,7 @@ func getVerificationLink(user *User) (link string) {
 	}
 	link = host + "/" + "verify?" +
 		"verifyID=" + user.VerID +
-		"&userID=" + url.PathEscape(user.ID)
+		"&userID=" + url.PathEscape(user.UserID)
 	return link
 }
 
@@ -160,11 +160,11 @@ func GetUserStorage() UserStorage {
 
 //UpdateUserInfo - updates common user fields
 func UpdateUserInfo(user *User) (err error) {
-	if len(user.ID) == 0 {
+	if len(user.UserID) == 0 {
 		// @TODO - store hash of user ID
-		user.ID = Hash(user.Email)
+		user.UserID = Hash(user.Email)
 	} else {
-		user.ID = Hash(user.ID)
+		user.UserID = Hash(user.UserID)
 	}
 	user.VerID = uuid.NewV4().String()
 	user.CreatedAt = time.Now()
@@ -490,7 +490,7 @@ func updateProfile(ctx echo.Context) (err error) {
 	var user User
 	sessionUserID := GetString(ctx, "userID")
 	err = ctx.Bind(&user)
-	if err == nil && sessionUserID == user.ID {
+	if err == nil && sessionUserID == user.UserID {
 		err = userStorage.UpdateProfile(ctx.Request().Context(), &user)
 		if err != nil {
 			msg = "Failed to update profile in database"
@@ -531,7 +531,7 @@ func (uh *UserHandler) UniqueKeyField() string {
 //GetKey - get the uniquely identifying key for the given item
 func (uh *UserHandler) GetKey(item interface{}) interface{} {
 	if user, ok := item.(User); ok {
-		return user.ID
+		return user.UserID
 	}
 	return ""
 }

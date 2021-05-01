@@ -57,7 +57,7 @@ var Flagged UserState = "flagged"
 
 //User - represents an user
 type User struct {
-	ID         string      `json:"id" db:"id"`
+	UserID     string      `json:"userID" db:"userID"`
 	Email      string      `json:"email" db:"email"`
 	Auth       AuthLevel   `json:"auth" db:"auth"`
 	FirstName  string      `json:"firstName" db:"first_name"`
@@ -248,7 +248,7 @@ func login(ctx echo.Context) (err error) {
 				token := jwt.New(jwt.SigningMethodHS256)
 				claims := token.Claims.(jwt.MapClaims)
 				name = user.FirstName + " " + user.LastName
-				claims["userID"] = user.ID
+				claims["userID"] = user.UserID
 				claims["exp"] = time.Now().Add(time.Hour * 24 * 7).Unix()
 				claims["access"] = user.Auth
 				claims["userName"] = name

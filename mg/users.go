@@ -32,7 +32,7 @@ func (m *userStorage) CreateUser(
 		return "", err
 	}
 	_, err := C("users").InsertOne(gtx, user)
-	return user.ID, teak.LogError("t.user.mongo", err)
+	return user.UserID, teak.LogError("t.user.mongo", err)
 }
 
 //UpdateUser - updates user in database
@@ -41,7 +41,7 @@ func (m *userStorage) UpdateUser(
 	if err := m.validateForSuper(gtx, user.Auth); err != nil {
 		return err
 	}
-	_, err := C("users").UpdateOne(gtx, bson.M{"id": user.ID}, user)
+	_, err := C("users").UpdateOne(gtx, bson.M{"id": user.UserID}, user)
 	return teak.LogError("t.user.mongo", err)
 }
 
@@ -329,7 +329,7 @@ func (m *userStorage) UpdateProfile(
 	user.FullName = user.FirstName + " " + user.LastName
 	_, err := C("users").UpdateOne(gtx,
 		bson.M{
-			"id": user.ID,
+			"id": user.UserID,
 		}, bson.M{
 			"$set": bson.M{
 				"email":      user.Email,

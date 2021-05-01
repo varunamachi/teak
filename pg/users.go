@@ -66,7 +66,7 @@ func (m *userStorage) CreateUser(
 	`
 	//Skipped props for now
 	_, err = defDB.NamedExecContext(gtx, query, user)
-	return user.ID, teak.LogError("t.user.pg", err)
+	return user.UserID, teak.LogError("t.user.pg", err)
 }
 
 //UpdateUser - updates user in database
@@ -326,6 +326,6 @@ func (m *userStorage) UpdateProfile(
 		user.FullName,
 		time.Now(),
 		user.FullName,
-		user.ID)
+		user.UserID)
 	return teak.LogError("t.user.pg", err)
 }

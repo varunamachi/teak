@@ -132,7 +132,7 @@ func setupCommand() *cli.Command {
 				return err
 			}
 			user := User{
-				ID:        id,
+				UserID:    id,
 				Email:     email,
 				Auth:      Super,
 				FirstName: first,
@@ -399,7 +399,7 @@ func createUserCmd() *cli.Command {
 				two := AskPassword("Confirm")
 				if one == two {
 					user := User{
-						ID:        id,
+						UserID:    id,
 						Email:     email,
 						Auth:      toRole(roleStr),
 						FirstName: first,
